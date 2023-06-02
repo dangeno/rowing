@@ -31,14 +31,17 @@ def find_folder(root_path, folder_name):
                 folder_path = os.path.join(root, dir_name)
                 return folder_path
 
-#os_name = platform.system()
-os_name = st.selectbox('seclect system', ('Darwin', 'Windows'))
+os_name = platform.system()
+
+uploaded_data = st.file_uploader('select file for analysis')
+
 if os_name == 'Darwin':  # macOS
     root_path = '/'
     delimiter = '/'
 elif os_name == 'Windows': #Windows (obviously)
     root_path = 'C:\\'
     delimiter = '\\'
+
 target_folder = 'HP - Staff - SSSM'
 
 result = find_folder(root_path, target_folder)
@@ -52,7 +55,8 @@ for f in folders:
 	folder = f.split('/')[-2]
 	folder_list.append(folder)
 
-session = st.selectbox('Select Session For Analysis', folder_list)
+#session = st.selectbox('Select Session For Analysis', folder_list)
+session = []
 
 files = glob.glob(f'{og_path}{delimiter}{session}{delimiter}*.csv')
 file_paths = []
@@ -65,16 +69,20 @@ for file in files:
 		file_paths.append(file)
 
 session_names.insert(0, 'Select Session')
-boat_select = st.selectbox('Select Boat', session_names)
+#boat_select = st.selectbox('Select Boat', session_names)
 
 
 #for i in range(len(file_paths)): 
-if boat_select == 'Select Session':
+if uploaded_data is None:
 	st.header("Select Session")
 	st.stop()
-else:
-	data = pd.read_csv(f'{og_path}{delimiter}{session}{delimiter}{boat_select}.csv')
 
+#if boat_select == 'Select Session':
+#	st.header("Select Session")
+#	st.stop()
+else:
+	#data = pd.read_csv(f'{og_path}{delimiter}{session}{delimiter}{boat_select}.csv')
+	data = pd.read_csv(uploaded_data)
 	data_array = data.values
 	data_list = data_array.tolist()
 	aperiodic = []
@@ -171,10 +179,8 @@ else:
 	catch_frame = pd.DataFrame()
 	finish_frame = pd.DataFrame()
 	count = 0
-
 	name_input = st.text_input('Enter Athlete Names (ie. AA,BB,CC)', value = ','.join(names))
 	
-	detect_start = st.checkbox('detect starts?')
 	name_list = []
 
 	for seat in range(0,seats): 
@@ -219,6 +225,11 @@ else:
 			power_data_crop = power_data_crop.iloc[3:,1].astype(float)
 			#power_data_crop = np.array(power_data_crop)
 			
+			swivel_pow = np.where(aperiodic_data.iloc[0].str.endswith('Rower Swivel Power'))[0]
+			swivel_pow = aperiodic_data.iloc[:,swivel_pow].dropna()
+			swivel_pow_crop = power_data[aperiodic_onset:aperiodic_offset]
+			swivel_pow_crop = swivel_pow_crop.iloc[:,1].astype(float)
+			
 			
 
 			#st.line_chart(boat_dist[boat_dist_onset:boat_dist_offset] - boat_dist[boat_dist_onset])
@@ -228,6 +239,7 @@ else:
 			col3, col4, col5, col6 = st.columns(4)
 			with col3: 
 				st.metric('Section Time', (float(time_off)-float(time_on))/1000)
+				st.metric('Average Seat Power', round(swivel_pow_crop.mean(),2))
 			with col4:
 				st.metric('Average Boat Power', round(np.mean(power_data_crop),2))
 			with col5: 
@@ -264,6 +276,13 @@ else:
 			max_angle = np.where(aperiodic_data.iloc[0].str.endswith('MaxAngle'))[0]
 			max_angle = aperiodic_data.iloc[:,max_angle]
 			max_angle_crop = max_angle[aperiodic_onset:aperiodic_offset]
+
+			gate_vel = np.where(periodic_data.iloc[0].str.endswith('GateAngleVel'))[0]
+			gate_vel = gate_vel[:seats]
+			
+			gate_vel = periodic_data.iloc[:,gate_vel]
+			gate_vel = gate_vel[periodic_onset:periodic_offset]
+
 
 			#Analyze gate data
 
@@ -340,6 +359,8 @@ else:
 			seat_max = np.where(pd.to_numeric(max_angle.iloc[1], errors='coerce')== athlete_select)[0]
 			seat_max_data = max_angle_crop.iloc[:,seat_max].reset_index(drop=True)
 			#seat_max_data = seat_max_data[2:]
+
+			#SeatPower
 			
 
 			fig = go.Figure()
