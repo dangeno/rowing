@@ -34,45 +34,7 @@ def find_folder(root_path, folder_name):
 os_name = platform.system()
 
 uploaded_data = st.file_uploader('select file for analysis')
-'''
-if os_name == 'Darwin':  # macOS
-    root_path = '/'
-    delimiter = '/'
-elif os_name == 'Windows': #Windows (obviously)
-    root_path = 'C:\\'
-    delimiter = '\\'
-
-target_folder = 'HP - Staff - SSSM'
-
-#result = find_folder(root_path, target_folder)
-og_path = f'{result}{delimiter}General{delimiter}Biomechanics{delimiter}Peach data{delimiter}'
-
-#folders = glob.glob(f'{og_path}*{delimiter}', recursive = True)
-	
-#folder_list = []
-
-#for f in folders:
-#	folder = f.split('/')[-2]
-#	folder_list.append(folder)
-
-#session = st.selectbox('Select Session For Analysis', folder_list)
-session = []
-
-files = glob.glob(f'{og_path}{delimiter}{session}{delimiter}*.csv')
-file_paths = []
-session_names = []
-for file in files: 
-	if 'intervals' not in file:
-		session_name = file.split('.')[-2]
-		session_name = session_name.split('/')[-1]
-		session_names.append(session_name)
-		file_paths.append(file)
-
-session_names.insert(0, 'Select Session')
-#boat_select = st.selectbox('Select Boat', session_names)
-'''
-
-#for i in range(len(file_paths)): 
+ 
 if uploaded_data is None:
 	st.header("Select Session")
 	st.stop()
