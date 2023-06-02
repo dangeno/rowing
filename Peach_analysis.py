@@ -21,7 +21,7 @@ from scipy.signal import find_peaks
 import scipy.integrate as integrate
 
 
-st.image('rowing_can.png', width = 100)
+st.image('rowing_can.png', width = 150)
 st.title("Rowing Canada Peach Analysis")
 
 def find_folder(root_path, folder_name):
@@ -31,8 +31,8 @@ def find_folder(root_path, folder_name):
                 folder_path = os.path.join(root, dir_name)
                 return folder_path
 
-os_name = platform.system()
-
+#os_name = platform.system()
+os_name = st.selectbox('seclect system', ('Darwin', 'Windows'))
 if os_name == 'Darwin':  # macOS
     root_path = '/'
     delimiter = '/'
