@@ -31,6 +31,7 @@ def find_folder(root_path, folder_name):
                 folder_path = os.path.join(root, dir_name)
                 return folder_path
 
+
 os_name = platform.system()
 
 uploaded_data = st.file_uploader('select file for analysis')
@@ -81,13 +82,12 @@ else:
 	#Aperiodic Data
 	aperiodic_data = data.iloc[aperiodic[0]:].reset_index(drop=True)
 	AP_cutttoff = np.where(aperiodic_data.iloc[0] == 'AvgBoatSpeed')[0][0]
+
+	boat_dist = np.where(periodic_data.iloc[0,:]=='Distance')[0]
+	boat_dist = periodic_data.iloc[2:,boat_dist]
 	boat_speed = aperiodic_data.iloc[:,AP_cutttoff][3:np.where(aperiodic_data['File Info'] == 'Aperiodic')[0][0]].reset_index(drop=True)
 	boat_speed = np.array(boat_speed.astype(float))
-	boat_lat = data.iloc[row_index_lat+1:np.where(data['File Info'] == 'Aperiodic')[0][1],col_idx_lat].reset_index(drop = True)
-	boat_lat = np.array(boat_lat.astype(float))
-	boat_long = data.iloc[row_index_lat+1:np.where(data['File Info'] == 'Aperiodic')[0][1],col_idx_lat+1].reset_index(drop = True)
-	boat_long = np.array(boat_long.astype(float))
-	boat_dist = np.sqrt(boat_long**2 + boat_lat**2)
+
 
 	threshold = st.number_input('Detect Velcoity Above:', value=4.5)
 
@@ -181,8 +181,8 @@ else:
 			gps_data = data.iloc[row_index_lat:]
 			gps_data = gps_data[:np.where(gps_data['File Info'] == 'Aperiodic')[0][0]]
 
-			boat_dist_onset = np.where(gps_data.iloc[2:,0].astype(int) >= int(time_on))[0][0]
-			boat_dist_offset = np.where(gps_data.iloc[2:,0].astype(int) >= int(time_off))[0][0]
+		
+			boat_dist = boat_dist.iloc[periodic_onset:periodic_offset,:] - boat_dist.iloc[periodic_onset,:]
 			power_data = np.where(aperiodic_data.iloc[0].str.endswith('Average Power'))[0]	
 			power_data = aperiodic_data.iloc[:,power_data].dropna()
 			power_data_crop = power_data[aperiodic_onset:aperiodic_offset]
@@ -193,7 +193,7 @@ else:
 			swivel_pow = aperiodic_data.iloc[:,swivel_pow]
 			swivel_pow_crop = swivel_pow.iloc[aperiodic_onset:aperiodic_offset,:]
 		
-			#st.line_chart(boat_dist[boat_dist_onset:boat_dist_offset] - boat_dist[boat_dist_onset])
+		
 			
 
 			angle_data = np.where(periodic_data.iloc[0].str.endswith('GateAngle'))[0]
@@ -250,8 +250,49 @@ else:
 			fig2.add_trace(go.Scatter(x=avg_angle, y=accel_data_crop,
 		    	fill=None,
 		    	mode='lines',
-		    	line_color = 'red',
+		    	line_color = 'blue',
 		    	name = 'Acceleration'))
+			# Create a dictionary to store the sum and count of y-values for each x-value
+
+			round_angle = avg_angle.round()
+			postive_pairs = []
+			negative_pairs = []
+			positive_y_values = []
+			negative_y_values = []
+			previous_x = None
+
+			for x, y in zip(round_angle, accel_data_crop):
+				if previous_x is not None:
+					if x > previous_x:
+						positive_y_values.append(y)
+						postive_pairs.append((x, y))
+					elif x < previous_x:
+						negative_y_values.append(y)
+						negative_pairs.append((x, y))
+				
+				previous_x = x
+			
+			pos_trace_data = pd.DataFrame(postive_pairs).astype(float)
+			pos_trace_data.columns = ['angles', 'accel']
+			pos_trace_data = pos_trace_data.groupby(['angles']).mean()
+			pos_trace_data = pos_trace_data.reset_index()
+			
+		
+
+			neg_trace_data = pd.DataFrame(negative_pairs).astype(float)
+			neg_trace_data.columns = ['angles', 'accel']
+			neg_trace_data = neg_trace_data.groupby(['angles']).mean()
+			neg_trace_data = neg_trace_data.reset_index()
+
+			trace_data = pos_trace_data.append(neg_trace_data, ignore_index=True)
+			trace_data.columns = ['angles', 'accel']
+			    
+			fig2.add_trace(go.Scatter(x=trace_data['angles'], y=trace_data['accel'],
+		    	fill=None,
+		    	mode='markers',
+		    	line_color = 'red',
+		    	name = 'Average Acceleration'))
+
 			fig2.add_hline(y=0)
 			
 			fig2.update_layout(title = f"<b>Boat Acceleration Vs. Gate Average Angle", 
@@ -286,9 +327,7 @@ else:
 			max_angle_crop = max_angle[aperiodic_onset:aperiodic_offset]
 
 
-			col3, col4, col5, col6 = st.columns(4)
-			with col3: 
-				st.metric('Section Time', (float(time_off)-float(time_on))/1000)
+			col4, col5, col6 = st.columns(3)
 				
 			with col4:
 				st.metric('Average Boat Power', round(np.mean(power_data_crop),2))
@@ -298,7 +337,8 @@ else:
 				st.metric('Avg Boat Speed', avg_speed)
 				
 			with col6: 
-				st.metric('Piece Distance (m)', abs(round(boat_dist[boat_dist_offset]-boat_dist[boat_dist_onset])))
+				final_dist = float(boat_dist.max())
+				st.metric('Piece Distance (m)', round(final_dist))
 
 
 			athlete_select = np.where(pd.Series(name_list).str.contains(name_select))[0][0]+1
@@ -336,20 +376,20 @@ else:
 					length = seat_max_data.iloc[:,col] - seat_min_data.iloc[:,col]
 					length = np.mean(length)
 					if col == 1:
-						with col3:
+						with col4:
 							st.metric("P Length (deg)", round(length,1))
 					else:
-						with col4: 
+						with col5: 
 							st.metric("S Length (deg)", round(length,1))
-				with col5:
+				with col6:
 					st.metric('Average Seat Power', round(seat_power_data.mean(),2))
 			
 			else: 
-				with col3: 
+				with col4: 
 					length = np.array(seat_max_data) - np.array(seat_min_data)
 					length = np.mean(length)
 					st.metric("P Length (deg)", round(length,1))
-				with col4:
+				with col5:
 					st.metric('Average Seat Power', round(seat_power_data.mean(),2))
 			
 			
@@ -385,7 +425,8 @@ else:
 
 			fig = go.Figure()
 			fig.update_layout(xaxis_range=[-70,50])
-
+			st.header('Slips')
+			col7, col8 = st.columns(2)
 
 			gate_count = 0
 			for gate in range(len(seat_forceX)):
@@ -408,7 +449,15 @@ else:
 				fig.update_layout(title = f"<b>Force Vs. Gate Angle:<b> {name_select} Seat {athlete_select} Piece {count}", 
 									xaxis_title = '<b>Gate Angle<b> (Degrees)', 
 									yaxis_title = '<b>Gate Force<b> (N)')
+				with col7: 
+
+					st.metric('Catch Slip', round(np.mean(front_slip),2))
+				with col8: 
+					st.metric('Finish Slip', round(np.mean(end_slip),2))
 			st.plotly_chart(fig)
+
+			
+			
 
 	
 
