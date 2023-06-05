@@ -21,7 +21,7 @@ from scipy.signal import find_peaks
 import scipy.integrate as integrate
 
 
-st.image('rowing_can.png', width = 150)
+st.image('rowing_canada.png', width = 150)
 st.title("Rowing Canada Peach Analysis")
 
 def find_folder(root_path, folder_name):
@@ -34,7 +34,9 @@ def find_folder(root_path, folder_name):
 os_name = platform.system()
 
 uploaded_data = st.file_uploader('select file for analysis')
- 
+
+
+#for i in range(len(file_paths)): 
 if uploaded_data is None:
 	st.header("Select Session")
 	st.stop()
@@ -188,28 +190,11 @@ else:
 			#power_data_crop = np.array(power_data_crop)
 			
 			swivel_pow = np.where(aperiodic_data.iloc[0].str.endswith('Rower Swivel Power'))[0]
-			swivel_pow = aperiodic_data.iloc[:,swivel_pow].dropna()
-			swivel_pow_crop = power_data[aperiodic_onset:aperiodic_offset]
-			swivel_pow_crop = swivel_pow_crop.iloc[:,1].astype(float)
-			
-			
-
+			swivel_pow = aperiodic_data.iloc[:,swivel_pow]
+			swivel_pow_crop = swivel_pow.iloc[aperiodic_onset:aperiodic_offset,:]
+		
 			#st.line_chart(boat_dist[boat_dist_onset:boat_dist_offset] - boat_dist[boat_dist_onset])
 			
-			
-
-			col3, col4, col5, col6 = st.columns(4)
-			with col3: 
-				st.metric('Section Time', (float(time_off)-float(time_on))/1000)
-				st.metric('Average Seat Power', round(swivel_pow_crop.mean(),2))
-			with col4:
-				st.metric('Average Boat Power', round(np.mean(power_data_crop),2))
-			with col5: 
-				avg_speed = np.mean(boat_speed[section[0]:section[-1]])
-				avg_speed = round(avg_speed,3)
-				st.metric('Avg Boat Speed', avg_speed)
-			with col6: 
-				st.metric('Piece Distance (m)', abs(round(boat_dist[boat_dist_offset]-boat_dist[boat_dist_onset])))
 
 			angle_data = np.where(periodic_data.iloc[0].str.endswith('GateAngle'))[0]
 			angle_data = periodic_data.iloc[:,angle_data]
@@ -250,7 +235,31 @@ else:
 
 			angle_data = np.where(periodic_data.iloc[0].str.endswith('GateAngle'))[0]
 			angle_data = periodic_data.iloc[:,angle_data]
-			angle_data_crop = angle_data[periodic_onset:periodic_offset]
+			angle_data_crop = angle_data[periodic_onset:periodic_offset].astype(float)
+			avg_angle = angle_data_crop.mean(axis=1)
+			
+			
+			accel_data = np.where(periodic_data.iloc[0].str.endswith('Accel'))[0]
+			accel_data = periodic_data.iloc[:,accel_data]
+			accel_data_crop = accel_data[periodic_onset:periodic_offset].iloc[:,0]
+			
+		
+
+			fig2 = go.Figure()
+
+			fig2.add_trace(go.Scatter(x=avg_angle, y=accel_data_crop,
+		    	fill=None,
+		    	mode='lines',
+		    	line_color = 'red',
+		    	name = 'Acceleration'))
+			fig2.add_hline(y=0)
+			
+			fig2.update_layout(title = f"<b>Boat Acceleration Vs. Gate Average Angle", 
+								xaxis_title = '<b>Gate Angle<b> (Degrees)', 
+								yaxis_title = '<b>Gate Force<b> (M/s2)')
+			st.plotly_chart(fig2)
+
+
 			
 			forceX_data = np.where(periodic_data.iloc[0].str.endswith('GateForceX'))[0]
 			forceX_data = periodic_data.iloc[:,forceX_data]
@@ -277,6 +286,20 @@ else:
 			max_angle_crop = max_angle[aperiodic_onset:aperiodic_offset]
 
 
+			col3, col4, col5, col6 = st.columns(4)
+			with col3: 
+				st.metric('Section Time', (float(time_off)-float(time_on))/1000)
+				
+			with col4:
+				st.metric('Average Boat Power', round(np.mean(power_data_crop),2))
+			with col5: 
+				avg_speed = np.mean(boat_speed[section[0]:section[-1]])
+				avg_speed = round(avg_speed,3)
+				st.metric('Avg Boat Speed', avg_speed)
+				
+			with col6: 
+				st.metric('Piece Distance (m)', abs(round(boat_dist[boat_dist_offset]-boat_dist[boat_dist_onset])))
+
 
 			athlete_select = np.where(pd.Series(name_list).str.contains(name_select))[0][0]+1
 
@@ -295,7 +318,42 @@ else:
 
 			extremes = list(np.where(abs(seat_angle_data.astype(float))>200)[0])
 			force_extremes = list(np.where(abs(seat_forceX_data.astype(float))>200)[0])
+
+			#Power Data
+			seat_power = np.where(pd.to_numeric(swivel_pow.iloc[1], errors='coerce') == athlete_select)[0]
+			seat_power_data = swivel_pow_crop.iloc[:,seat_power].astype(float)
+
+			#length Data
+			seat_min = np.where(pd.to_numeric(min_angle.iloc[1], errors='coerce') == athlete_select)[0]
+			seat_min_data = min_angle_crop.iloc[:,seat_min].astype(float)
 			
+
+			seat_max = np.where(pd.to_numeric(max_angle.iloc[1], errors='coerce') == athlete_select)[0]
+			seat_max_data = max_angle_crop.iloc[:,seat_max].astype(float)
+			
+			if len(seat_max_data.columns)>1:
+				for col in range(len(seat_max_data.columns)): 
+					length = seat_max_data.iloc[:,col] - seat_min_data.iloc[:,col]
+					length = np.mean(length)
+					if col == 1:
+						with col3:
+							st.metric("P Length (deg)", round(length,1))
+					else:
+						with col4: 
+							st.metric("S Length (deg)", round(length,1))
+				with col5:
+					st.metric('Average Seat Power', round(seat_power_data.mean(),2))
+			
+			else: 
+				with col3: 
+					length = np.array(seat_max_data) - np.array(seat_min_data)
+					length = np.mean(length)
+					st.metric("P Length (deg)", round(length,1))
+				with col4:
+					st.metric('Average Seat Power', round(seat_power_data.mean(),2))
+			
+			
+
 			
 			#Removing extreme angle data	
 			if len(extremes)>0 or len(force_extremes)>0:
@@ -329,8 +387,9 @@ else:
 			fig.update_layout(xaxis_range=[-70,50])
 
 
-
+			gate_count = 0
 			for gate in range(len(seat_forceX)):
+				gate_count += 1
 				
 				front_slip = seat_min_data.iloc[:,gate].astype(float) + seat_cslip_data.iloc[:,gate].astype(float)
 				end_slip = seat_max_data.iloc[:,gate].astype(float) - seat_fslip_data.iloc[:,gate].astype(float)
@@ -344,8 +403,8 @@ else:
 			    	mode='lines',
 			    	#line_color = 'red',
 			    	name = 'Angle Vs. Force'))
-				fig.add_vline(x=np.mean(front_slip), line_width=3, line_dash="dash", line_color=  f'#2ca0{gate*2}c' , annotation_text= f'Average Catch Slip:  <b>{round(front_res)}<b>', annotation_textangle = 270, annotation_position="top left")
-				fig.add_vline(x=np.mean(end_slip), line_width=3, line_dash="dash", line_color=  f'#5ca0{gate*2}c' , annotation_text= f'Average Finish Slip:  <b>{round(end_res)}<b>', annotation_textangle = 270, annotation_position="top left")
+				fig.add_vline(x=np.mean(front_slip), line_width=3, line_dash="dash", line_color=  f'#{gate}ca0{gate*5}c' , annotation_text= f'Catch Slip {gate_count}:  <b>{round(front_res)}<b>', annotation_textangle = 270, annotation_position="top left")
+				fig.add_vline(x=np.mean(end_slip), line_width=3, line_dash="dash", line_color=  f'#{gate}ca0{gate*5}c' , annotation_text= f'Finish Slip {gate_count}:  <b>{round(end_res)}<b>', annotation_textangle = 270, annotation_position="top left")
 				fig.update_layout(title = f"<b>Force Vs. Gate Angle:<b> {name_select} Seat {athlete_select} Piece {count}", 
 									xaxis_title = '<b>Gate Angle<b> (Degrees)', 
 									yaxis_title = '<b>Gate Force<b> (N)')
