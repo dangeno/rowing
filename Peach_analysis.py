@@ -32,6 +32,7 @@ def find_folder(root_path, folder_name):
                 return folder_path
 
 
+
 os_name = platform.system()
 
 uploaded_data = st.file_uploader('select file for analysis')
@@ -250,6 +251,9 @@ else:
 			accel_data = periodic_data.iloc[:,accel_data]
 			accel_data_crop = accel_data[periodic_onset:periodic_offset].iloc[:,0]
 			
+
+
+			
 			
 
 			fig2 = go.Figure()
@@ -258,6 +262,7 @@ else:
 		    	fill=None,
 		    	mode='lines',
 		    	line_color = 'blue',
+		    	opacity=.6,
 		    	name = 'Acceleration'))
 			
 
@@ -293,6 +298,7 @@ else:
 			trace_data.columns = ['angles', 'accel']
 			    
 			fig2.add_trace(go.Scatter(x=trace_data['angles'], y=trace_data['accel'],
+			
 		    	fill=None,
 		    	mode='markers',
 		    	line_color = 'red',
@@ -302,7 +308,7 @@ else:
 			
 			fig2.update_layout(title = f"<b>Boat Acceleration Vs. Gate Average Angle", 
 								xaxis_title = '<b>Gate Angle<b> (Degrees)', 
-								yaxis_title = '<b>Gate Force<b> (M/s2)')
+								yaxis_title = '<b>Gate Acceleration<b> (M/s2)')
 			if plot_show==True:
 				st.plotly_chart(fig2)
 
@@ -338,6 +344,9 @@ else:
 			
 
 			fig3 = go.Figure()
+			fig3.update_layout(title = f"<b>Angular Velocity Vs. Gate Angle:<b> Piece {count}", 
+									xaxis_title = '<b>Gate Angle<b> (Deg)', 
+									yaxis_title = '<b>Gate Velocity<b> (Deg/s)')
 
 			if plot_show == True:
 
@@ -361,11 +370,12 @@ else:
 					st.plotly_chart(fig3)
 					
 				else: 
-					fig3.add_trace(go.Scatter(x=angle_data_crop.iloc[:,seat], y=angle_vel_crop.iloc[:,seat],
-					    	fill=None,
-					    	mode='lines',
-					    	#line_color = 'red',
-					    	name = f'Angle Velocity Vs. Angle Seat {seat}'))
+					for seat in range(0,seats):
+						fig3.add_trace(go.Scatter(x=angle_data_crop.iloc[:,seat], y=angle_vel_crop.iloc[:,seat],
+						    	fill=None,
+						    	mode='lines',
+						    	#line_color = 'red',
+						    	name = f'Angle Velocity Vs. Angle Seat {seat+1}'))
 
 					st.plotly_chart(fig3)
 
@@ -498,10 +508,11 @@ else:
 									xaxis_title = '<b>Gate Angle<b> (Degrees)', 
 									yaxis_title = '<b>Gate Force<b> (N)')
 				with col7: 
-
-					st.metric('Catch Slip', round(np.mean(front_slip),2))
+					st.metric('Catch Slip', round(np.mean(front_res),2))
+					st.metric('Catch Length', round(np.mean(seat_min_data.iloc[:,gate].astype(float)),2))
 				with col8: 
-					st.metric('Finish Slip', round(np.mean(end_slip),2))
+					st.metric('Finish Slip', round(np.mean(end_res),2))
+					st.metric('Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2))
 			st.plotly_chart(fig)
 
 			
