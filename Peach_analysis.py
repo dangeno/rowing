@@ -55,9 +55,9 @@ else:
 		if 'AvgBoatSpeed' in row:
 			col_idx = row.index('AvgBoatSpeed')
 			aperiodic.append(row_idx)			
-		if 'lat' in row:
-			col_idx_lat = row.index('lat')
-			row_index_lat = np.where(data.iloc[:,col_idx_lat]=='lat')[0][0]	
+		if 'Rig' in row:
+			col_idx_rig = row.index('Rig')
+			row_idx_rig = np.where(data.iloc[:,col_idx_rig]=='Rig')[0][0]	
 		if 'Abbreviation' in row:
 			col_idx_names = row.index('Abbreviation')
 			row_idx_names = np.where(data.iloc[:,col_idx_names]=='Abbreviation')[0][0]	
@@ -70,6 +70,8 @@ else:
 	cutttoff = np.where(periodic_data.iloc[1] == 'Boat')[0][0]
 	seats = int(periodic_data.iloc[1][1:cutttoff-1].max())
 	names = data.iloc[row_idx_names+1:row_idx_names+seats+1,col_idx_names]
+	rig = data.iloc[row_idx_rig+1, col_idx_rig]
+	
 	
 	
 	if all(x for x in names):
@@ -83,8 +85,7 @@ else:
 	aperiodic_data = data.iloc[aperiodic[0]:].reset_index(drop=True)
 	AP_cutttoff = np.where(aperiodic_data.iloc[0] == 'AvgBoatSpeed')[0][0]
 
-	boat_dist = np.where(periodic_data.iloc[0,:]=='Distance')[0]
-	boat_dist = periodic_data.iloc[2:,boat_dist]
+	
 	boat_speed = aperiodic_data.iloc[:,AP_cutttoff][3:np.where(aperiodic_data['File Info'] == 'Aperiodic')[0][0]].reset_index(drop=True)
 	boat_speed = np.array(boat_speed.astype(float))
 
@@ -138,6 +139,8 @@ else:
 	
 	st.plotly_chart(fig1)
 
+	plot_show = st.checkbox('Show Detailed Plots')
+
 	angle_frame = pd.DataFrame()
 	force_frame = pd.DataFrame()
 	catch_frame = pd.DataFrame()
@@ -161,6 +164,10 @@ else:
 	else: 
 		name_select = st.selectbox('select athlete for analysis', name_list)
 
+	if rig == 'sculling': 
+		if plot_show == True:
+			port_star_sel = st.selectbox('Select Gate', ['Port', 'Starboard'])
+
 	for section in section_indexes: 
 		if len(section)>2:
 
@@ -169,7 +176,6 @@ else:
 
 			time_on = aperiodic_data.iloc[:,0][section[0]+3]
 			time_off = aperiodic_data.iloc[:,0][section[-1]]
-			
 
 			periodic_onset = np.where(periodic_data.iloc[:,0][2:].astype(int) >= int(time_on))[0][0]
 			periodic_offset = np.where(periodic_data.iloc[:,0][2:].astype(int) >= int(time_off))[0][0]
@@ -178,11 +184,12 @@ else:
 			aperiodic_onset = np.where(aperiodic_data.iloc[3:,0].astype(float) >= int(time_on))[0][0]
 			aperiodic_offset = np.where(aperiodic_data.iloc[3:,0].astype(float) >= int(time_off))[0][0]
 			
-			gps_data = data.iloc[row_index_lat:]
-			gps_data = gps_data[:np.where(gps_data['File Info'] == 'Aperiodic')[0][0]]
 
-		
-			boat_dist = boat_dist.iloc[periodic_onset:periodic_offset,:] - boat_dist.iloc[periodic_onset,:]
+			boat_dist = np.where(periodic_data.iloc[0,:]=='Distance')[0]
+			boat_dist = periodic_data.iloc[2:,boat_dist]
+
+
+			boat_dist = (boat_dist.iloc[periodic_onset:periodic_offset,:].astype(float) - boat_dist.iloc[periodic_onset,:].astype(float))
 			power_data = np.where(aperiodic_data.iloc[0].str.endswith('Average Power'))[0]	
 			power_data = aperiodic_data.iloc[:,power_data].dropna()
 			power_data_crop = power_data[aperiodic_onset:aperiodic_offset]
@@ -243,7 +250,7 @@ else:
 			accel_data = periodic_data.iloc[:,accel_data]
 			accel_data_crop = accel_data[periodic_onset:periodic_offset].iloc[:,0]
 			
-		
+			
 
 			fig2 = go.Figure()
 
@@ -252,7 +259,7 @@ else:
 		    	mode='lines',
 		    	line_color = 'blue',
 		    	name = 'Acceleration'))
-			# Create a dictionary to store the sum and count of y-values for each x-value
+			
 
 			round_angle = avg_angle.round()
 			postive_pairs = []
@@ -276,8 +283,6 @@ else:
 			pos_trace_data.columns = ['angles', 'accel']
 			pos_trace_data = pos_trace_data.groupby(['angles']).mean()
 			pos_trace_data = pos_trace_data.reset_index()
-			
-		
 
 			neg_trace_data = pd.DataFrame(negative_pairs).astype(float)
 			neg_trace_data.columns = ['angles', 'accel']
@@ -298,7 +303,8 @@ else:
 			fig2.update_layout(title = f"<b>Boat Acceleration Vs. Gate Average Angle", 
 								xaxis_title = '<b>Gate Angle<b> (Degrees)', 
 								yaxis_title = '<b>Gate Force<b> (M/s2)')
-			st.plotly_chart(fig2)
+			if plot_show==True:
+				st.plotly_chart(fig2)
 
 
 			
@@ -326,6 +332,47 @@ else:
 			max_angle = aperiodic_data.iloc[:,max_angle]
 			max_angle_crop = max_angle[aperiodic_onset:aperiodic_offset]
 
+			angle_vel = np.where(periodic_data.iloc[0].str.endswith('GateAngleVel'))[0]
+			angle_vel = periodic_data.iloc[:,angle_vel]
+			angle_vel_crop = angle_vel[periodic_onset:periodic_offset]
+			
+
+			fig3 = go.Figure()
+
+			if plot_show == True:
+
+				if rig =='sculling': 
+					fig4 = go.Figure()
+					
+					for seat in range(0,seats):
+						if port_star_sel == 'Port':
+							fig3.add_trace(go.Scatter(x=angle_data_crop.iloc[:,seat], y=angle_vel_crop.iloc[:,seat],
+						    	fill=None,
+						    	mode='lines',
+						    	#line_color = 'red',
+						    	name = f'Port Angle Velocity Vs. Angle Seat {seat+1}'))
+						if port_star_sel == 'Starboard':
+							fig3.add_trace(go.Scatter(x=angle_data_crop.iloc[:,(seat+seats)], y=angle_vel_crop.iloc[:,(seat+seats)],
+						    	fill=None,
+						    	mode='lines',
+						    	#line_color = 'red',
+						    	name = f'Sartboard Angle Velocity Vs. Angle Seat {seat+1}'))
+					
+					st.plotly_chart(fig3)
+					
+				else: 
+					fig3.add_trace(go.Scatter(x=angle_data_crop.iloc[:,seat], y=angle_vel_crop.iloc[:,seat],
+					    	fill=None,
+					    	mode='lines',
+					    	#line_color = 'red',
+					    	name = f'Angle Velocity Vs. Angle Seat {seat}'))
+
+					st.plotly_chart(fig3)
+
+		
+
+
+
 
 			col4, col5, col6 = st.columns(3)
 				
@@ -342,8 +389,6 @@ else:
 
 
 			athlete_select = np.where(pd.Series(name_list).str.contains(name_select))[0][0]+1
-
-
 
 			#Angle Data
 			seat_angle = np.where(pd.to_numeric(angle_data.iloc[1], errors='coerce') == athlete_select)[0]
@@ -366,10 +411,12 @@ else:
 			#length Data
 			seat_min = np.where(pd.to_numeric(min_angle.iloc[1], errors='coerce') == athlete_select)[0]
 			seat_min_data = min_angle_crop.iloc[:,seat_min].astype(float)
-			
-
 			seat_max = np.where(pd.to_numeric(max_angle.iloc[1], errors='coerce') == athlete_select)[0]
 			seat_max_data = max_angle_crop.iloc[:,seat_max].astype(float)
+			
+
+			
+
 			
 			if len(seat_max_data.columns)>1:
 				for col in range(len(seat_max_data.columns)): 
@@ -421,6 +468,7 @@ else:
 			#seat_max_data = seat_max_data[2:]
 
 			#SeatPower
+
 			
 
 			fig = go.Figure()
