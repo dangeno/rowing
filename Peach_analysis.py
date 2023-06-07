@@ -3,6 +3,7 @@
 Peach Analysis streamlit app
 
 #POWER VS DISTANCE PER STROKE
+Effective work per stroke
 
 '''
 import os
@@ -19,6 +20,7 @@ from datetime import datetime
 import timedelta
 from plotly.subplots import make_subplots
 from scipy.signal import find_peaks
+from scipy.signal import savgol_filter
 
 import scipy.integrate as integrate
 
@@ -518,8 +520,25 @@ else:
 					st.metric('Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2))
 			st.plotly_chart(fig)
 
-			
-			
+			smoothed_power =  savgol_filter(seat_power_data.iloc[:, 0], window_length=70, polyorder=2)
+
+
+			fig5 = go.Figure()
+			fig5.update_layout(title = f"<b>Power Per Stroke<b> {name_select} Seat {athlete_select} Piece {count}", 
+									xaxis_title = '<b>Stroke (number)', 
+									yaxis_title = '<b>Swivel Power (Watts)')
+			fig5.add_trace(go.Scatter(y=seat_power_data.iloc[:,0],
+			    	fill=None,
+			    	mode='lines',
+			    	line_color = 'red',
+			    	name = 'Swivel Power'))
+			fig5.add_trace(go.Scatter(
+				    y=smoothed_power,
+				    fill=None,
+				    mode='lines',
+				    line_color='blue',
+				    name='Smoothed Power'))
+			st.plotly_chart(fig5)
 
 	
 
