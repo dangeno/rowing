@@ -2,6 +2,8 @@
 
 Peach Analysis streamlit app
 
+#POWER VS DISTANCE PER STROKE
+
 '''
 import os
 import fnmatch
@@ -200,9 +202,10 @@ else:
 			swivel_pow = np.where(aperiodic_data.iloc[0].str.endswith('Rower Swivel Power'))[0]
 			swivel_pow = aperiodic_data.iloc[:,swivel_pow]
 			swivel_pow_crop = swivel_pow.iloc[aperiodic_onset:aperiodic_offset,:]
-		
-		
-			
+			swivel_pow_avg = swivel_pow_crop.iloc[:, range(1,seat+2)].astype(float)
+			swivel_pow_avg = swivel_pow_avg.mean()
+			swivel_pow_avg = swivel_pow_avg.mean()
+
 
 			angle_data = np.where(periodic_data.iloc[0].str.endswith('GateAngle'))[0]
 			angle_data = periodic_data.iloc[:,angle_data]
@@ -332,11 +335,12 @@ else:
 			
 			min_angle = aperiodic_data.iloc[:,min_angle]
 			min_angle_crop = min_angle[aperiodic_onset:aperiodic_offset]
-	
+
 
 			max_angle = np.where(aperiodic_data.iloc[0].str.endswith('MaxAngle'))[0]
 			max_angle = aperiodic_data.iloc[:,max_angle]
 			max_angle_crop = max_angle[aperiodic_onset:aperiodic_offset]
+
 
 			angle_vel = np.where(periodic_data.iloc[0].str.endswith('GateAngleVel'))[0]
 			angle_vel = periodic_data.iloc[:,angle_vel]
@@ -418,15 +422,43 @@ else:
 			seat_power = np.where(pd.to_numeric(swivel_pow.iloc[1], errors='coerce') == athlete_select)[0]
 			seat_power_data = swivel_pow_crop.iloc[:,seat_power].astype(float)
 
+
+
 			#length Data
 			seat_min = np.where(pd.to_numeric(min_angle.iloc[1], errors='coerce') == athlete_select)[0]
 			seat_min_data = min_angle_crop.iloc[:,seat_min].astype(float)
 			seat_max = np.where(pd.to_numeric(max_angle.iloc[1], errors='coerce') == athlete_select)[0]
 			seat_max_data = max_angle_crop.iloc[:,seat_max].astype(float)
+
+				#Removing extreme angle data	
+			if len(extremes)>0 or len(force_extremes)>0:
+				seat_angle_data = seat_angle_data.drop(extremes)
+				seat_forceX_data = seat_forceX_data.drop(extremes)
+				
 			
 
+			#Slip Data	
+			seat_cslip = np.where(pd.to_numeric(catch_slip.iloc[1], errors='coerce')== athlete_select)[0]
+			seat_cslip_data = catch_slip_crop.iloc[:,seat_cslip].reset_index(drop=True)
+			#seat_cslip_data = seat_cslip_data[2:]
+			
+			seat_fslip = np.where(pd.to_numeric(finish_slip.iloc[1], errors='coerce')== athlete_select)[0]
+			seat_fslip_data = finish_slip_crop.iloc[:,seat_fslip].reset_index(drop=True)
+			#seat_fslip_data = seat_fslip_data[2:]
+
+			seat_min = np.where(pd.to_numeric(min_angle.iloc[1], errors='coerce')== athlete_select)[0]
+			seat_min_data = min_angle_crop.iloc[:,seat_min].reset_index(drop=True)
+			seat_min_data = seat_min_data.astype(float)
+			#seat_min_data = seat_min_data[2:]
+
+
+			seat_max = np.where(pd.to_numeric(max_angle.iloc[1], errors='coerce')== athlete_select)[0]
+			seat_max_data = max_angle_crop.iloc[:,seat_max].reset_index(drop=True)
+			seat_max_data = seat_max_data.astype(float)
+			#seat_max_data = seat_max_data[2:]
 			
 
+		
 			
 			if len(seat_max_data.columns)>1:
 				for col in range(len(seat_max_data.columns)): 
@@ -445,41 +477,12 @@ else:
 				with col4: 
 					length = np.array(seat_max_data) - np.array(seat_min_data)
 					length = np.mean(length)
-					st.metric("P Length (deg)", round(length,1))
+					eff_length = length - seat_cslip - seat_fslip
+					st.metric("Effective Length (deg)", round(eff_length[0],1))
 				with col5:
-					st.metric('Average Seat Power', round(seat_power_data.mean(),2))
-			
-			
-
-			
-			#Removing extreme angle data	
-			if len(extremes)>0 or len(force_extremes)>0:
-				seat_angle_data = seat_angle_data.drop(extremes)
-				seat_forceX_data = seat_forceX_data.drop(extremes)
-				
-			
-
-			#Slip Data	
-			seat_cslip = np.where(pd.to_numeric(catch_slip.iloc[1], errors='coerce')== athlete_select)[0]
-			seat_cslip_data = catch_slip_crop.iloc[:,seat_cslip].reset_index(drop=True)
-			#seat_cslip_data = seat_cslip_data[2:]
-			
-			seat_fslip = np.where(pd.to_numeric(finish_slip.iloc[1], errors='coerce')== athlete_select)[0]
-			seat_fslip_data = finish_slip_crop.iloc[:,seat_fslip].reset_index(drop=True)
-			#seat_fslip_data = seat_fslip_data[2:]
-
-			seat_min = np.where(pd.to_numeric(min_angle.iloc[1], errors='coerce')== athlete_select)[0]
-			seat_min_data = min_angle_crop.iloc[:,seat_min].reset_index(drop=True)
-			#seat_min_data = seat_min_data[2:]
+					st.metric('Average Seat Power', round(seat_power_data.mean(),2), delta= float(seat_power_data.mean() - swivel_pow_avg))
 
 
-			seat_max = np.where(pd.to_numeric(max_angle.iloc[1], errors='coerce')== athlete_select)[0]
-			seat_max_data = max_angle_crop.iloc[:,seat_max].reset_index(drop=True)
-			#seat_max_data = seat_max_data[2:]
-
-			#SeatPower
-
-			
 
 			fig = go.Figure()
 			fig.update_layout(xaxis_range=[-70,50])
