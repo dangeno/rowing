@@ -204,7 +204,7 @@ else:
 			swivel_pow = np.where(aperiodic_data.iloc[0].str.endswith('Rower Swivel Power'))[0]
 			swivel_pow = aperiodic_data.iloc[:,swivel_pow]
 			swivel_pow_crop = swivel_pow.iloc[aperiodic_onset:aperiodic_offset,:]
-			swivel_pow_avg = swivel_pow_crop.iloc[:, range(1,seat+2)].astype(float)
+			swivel_pow_avg = swivel_pow_crop.iloc[:, 1:].astype(float)
 			swivel_pow_avg = swivel_pow_avg.mean()
 			swivel_pow_avg = swivel_pow_avg.mean()
 
