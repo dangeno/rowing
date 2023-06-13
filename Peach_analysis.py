@@ -5,6 +5,7 @@ Peach Analysis streamlit app
 #POWER VS DISTANCE PER STROKE
 Effective work per stroke
 
+
 '''
 import os
 import fnmatch
@@ -460,7 +461,6 @@ else:
 			#seat_max_data = seat_max_data[2:]
 			
 
-		
 			
 			if len(seat_max_data.columns)>1:
 				for col in range(len(seat_max_data.columns)): 
@@ -520,7 +520,13 @@ else:
 					st.metric('Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2))
 			st.plotly_chart(fig)
 
-			smoothed_power =  savgol_filter(seat_power_data.iloc[:, 0], window_length=70, polyorder=2)
+			st.write(len(seat_power_data))
+			if len(seat_power_data)>41: 
+				smoothed_power =  savgol_filter(seat_power_data.iloc[:, 0], window_length=40, polyorder=2)
+			else: 
+				smoothed_power =  savgol_filter(seat_power_data.iloc[:, 0], window_length=(len(seat_power_data) - 5), polyorder=2)
+
+			
 
 
 			fig5 = go.Figure()
@@ -540,12 +546,16 @@ else:
 				    name='Smoothed Power'))
 			st.plotly_chart(fig5)
 
+			for name in name_list: 
+				export_data = pd.Series([name, count, ])
+				
+				
+
 	
 
 
 	
-	export_data = pd.Series([])
-
+	
 	#stroke_impulse = integrate.cumtrapz(, dx = 1)
 
 	#fig2 = go.Figure()
