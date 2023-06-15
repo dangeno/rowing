@@ -95,8 +95,10 @@ else:
 	boat_speed = aperiodic_data.iloc[:,AP_cutttoff][3:np.where(aperiodic_data['File Info'] == 'Aperiodic')[0][0]].reset_index(drop=True)
 	boat_speed = np.array(boat_speed.astype(float))
 
+	vel_threshold = boat_speed.max()-1
 
-	threshold = st.number_input('Detect Velcoity Above:', value=4.5)
+
+	threshold = st.number_input('Detect Velcoity Above:', value=round(vel_threshold,1))
 
 	Threshold_velocity = np.where(boat_speed >= threshold)[0]
 	
@@ -460,18 +462,21 @@ else:
 			seat_max_data = seat_max_data.astype(float)
 			#seat_max_data = seat_max_data[2:]
 			
+		
 
 			
 			if len(seat_max_data.columns)>1:
 				for col in range(len(seat_max_data.columns)): 
 					length = seat_max_data.iloc[:,col] - seat_min_data.iloc[:,col]
 					length = np.mean(length)
+					eff_length = length - seat_cslip_data.iloc[:,col].astype(float).mean() - seat_fslip_data.iloc[:,col].astype(float).mean()
+					
 					if col == 1:
 						with col4:
-							st.metric("P Length (deg)", round(length,1))
+							st.metric("P Effective Length (deg)", round(eff_length,1))
 					else:
 						with col5: 
-							st.metric("S Length (deg)", round(length,1))
+							st.metric("S Effective Length (deg)", round(eff_length,1))
 				with col6:
 					st.metric('Average Seat Power', round(seat_power_data.mean(),2))
 			
@@ -483,7 +488,6 @@ else:
 					st.metric("Effective Length (deg)", round(eff_length,1))
 				with col5:
 					st.metric('Average Seat Power', round(seat_power_data.mean(),2), delta= float(seat_power_data.mean() - swivel_pow_avg))
-
 
 
 			fig = go.Figure()
