@@ -479,8 +479,8 @@ else:
 				with col4: 
 					length = np.array(seat_max_data) - np.array(seat_min_data)
 					length = np.mean(length)
-					eff_length = length - seat_cslip - seat_fslip
-					st.metric("Effective Length (deg)", round(eff_length[0],1))
+					eff_length = length - seat_cslip_data.astype(float).mean()[0] - seat_fslip_data.astype(float).mean()[0]
+					st.metric("Effective Length (deg)", round(eff_length,1))
 				with col5:
 					st.metric('Average Seat Power', round(seat_power_data.mean(),2), delta= float(seat_power_data.mean() - swivel_pow_avg))
 
@@ -520,7 +520,7 @@ else:
 					st.metric('Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2))
 			st.plotly_chart(fig)
 
-			st.write(len(seat_power_data))
+			
 			if len(seat_power_data)>41: 
 				smoothed_power =  savgol_filter(seat_power_data.iloc[:, 0], window_length=40, polyorder=2)
 			else: 
