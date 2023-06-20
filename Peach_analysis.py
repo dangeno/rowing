@@ -36,12 +36,22 @@ def find_folder(root_path, folder_name):
                 folder_path = os.path.join(root, dir_name)
                 return folder_path
 
+def lowpass(signal, highcut): 
+	
+	order = 4 
 
+	nyq = 0.5*frequency
+	highcut = highcut/nyq
+
+	b,a = sp.signal.butter(order, [highcut], 'lowpass', analog=False)
+	y = sp.signal.filtfilt(b,a, signal, axis = 0)
+	return(y)
 
 os_name = platform.system()
 
 uploaded_data = st.file_uploader('select file for analysis')
 
+frequency = 50
 
 #for i in range(len(file_paths)): 
 if uploaded_data is None:
@@ -53,6 +63,8 @@ if uploaded_data is None:
 #	st.stop()
 else:
 	#data = pd.read_csv(f'{og_path}{delimiter}{session}{delimiter}{boat_select}.csv')
+	file_type = uploaded_data.name.split('.')[-1]
+	
 	data = pd.read_csv(uploaded_data)
 	data_array = data.values
 	data_list = data_array.tolist()
@@ -94,6 +106,7 @@ else:
 	
 	boat_speed = aperiodic_data.iloc[:,AP_cutttoff][3:np.where(aperiodic_data['File Info'] == 'Aperiodic')[0][0]].reset_index(drop=True)
 	boat_speed = np.array(boat_speed.astype(float))
+	boat_speed = boat_speed[np.logical_not(np.isnan(boat_speed))]
 
 	vel_threshold = boat_speed.max()-1
 
@@ -258,6 +271,7 @@ else:
 			accel_data = np.where(periodic_data.iloc[0].str.endswith('Accel'))[0]
 			accel_data = periodic_data.iloc[:,accel_data]
 			accel_data_crop = accel_data[periodic_onset:periodic_offset].iloc[:,0]
+			plot_accel = lowpass(accel_data_crop,5)
 			
 
 
@@ -266,7 +280,7 @@ else:
 
 			fig2 = go.Figure()
 
-			fig2.add_trace(go.Scatter(x=avg_angle, y=accel_data_crop,
+			fig2.add_trace(go.Scatter(x=avg_angle, y=plot_accel,
 		    	fill=None,
 		    	mode='lines',
 		    	line_color = 'blue',
@@ -315,8 +329,8 @@ else:
 			fig2.add_hline(y=0)
 			
 			fig2.update_layout(title = f"<b>Boat Acceleration Vs. Gate Average Angle", 
-								xaxis_title = '<b>Gate Angle<b> (Degrees)', 
-								yaxis_title = '<b>Gate Acceleration<b> (M/s2)')
+								xaxis_title = '<b>Average Gate Angle<b> (Degrees)', 
+								yaxis_title = '<b>Boat Acceleration<b> (m/s2)')
 			if plot_show==True:
 				st.plotly_chart(fig2)
 
@@ -350,7 +364,12 @@ else:
 			angle_vel = np.where(periodic_data.iloc[0].str.endswith('GateAngleVel'))[0]
 			angle_vel = periodic_data.iloc[:,angle_vel]
 			angle_vel_crop = angle_vel[periodic_onset:periodic_offset]
-			
+
+			forceX_data_crop.replace("", float('NaN'), inplace=True)
+			forceX_data_crop.dropna(how='all', axis = 1, inplace=True)
+			forceX_data_crop = forceX_data_crop.astype(float)
+			mean_force = forceX_data_crop.mean(axis = 1).reset_index(drop = True)
+			mean_gate_angle = angle_data_crop.mean(axis = 1).reset_index(drop = True)
 
 			fig3 = go.Figure()
 			fig3.update_layout(title = f"<b>Angular Velocity Vs. Gate Angle:<b> Piece {count}", 
@@ -496,6 +515,12 @@ else:
 			col7, col8 = st.columns(2)
 
 			gate_count = 0
+
+			fig.add_trace(go.Scatter(x=mean_gate_angle, y=mean_force,
+						    	fill=None,
+						    	mode='lines',
+						    	opacity=0.5, 
+						    	name = 'Boat Average Force Trace'))
 			for gate in range(len(seat_forceX)):
 				gate_count += 1
 				
@@ -505,6 +530,8 @@ else:
 				max_mean = np.mean(seat_max_data.iloc[:,gate].astype(float))
 				front_res = np.mean(front_slip) - min_mean
 				end_res = max_mean - np.mean(end_slip)
+
+				
 
 				fig.add_trace(go.Scatter(x=seat_angle_data.iloc[:,gate], y=seat_forceX_data.iloc[:,gate],
 			    	fill=None,
