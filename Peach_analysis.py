@@ -487,8 +487,10 @@ else:
 			if len(seat_max_data.columns)>1:
 				for col in range(len(seat_max_data.columns)): 
 					length = seat_max_data.iloc[:,col] - seat_min_data.iloc[:,col]
+					length = length.dropna()
 					length = np.mean(length)
-					eff_length = length - seat_cslip_data.iloc[:,col].astype(float).mean() - seat_fslip_data.iloc[:,col].astype(float).mean()
+					eff_length = length - seat_cslip_data.iloc[:,col].dropna().astype(float).mean() - seat_fslip_data.iloc[:,col].dropna().astype(float).mean()
+					st.write(eff_length)
 					
 					if col == 1:
 						with col4:
@@ -501,9 +503,10 @@ else:
 			
 			else: 
 				with col4: 
-					length = np.array(seat_max_data) - np.array(seat_min_data)
+					length = np.array(seat_max_data.dropna()) - np.array(seat_min_data.dropna())
 					length = np.mean(length)
-					eff_length = length - seat_cslip_data.astype(float).mean()[0] - seat_fslip_data.astype(float).mean()[0]
+					
+					eff_length = length - seat_cslip_data.dropna().astype(float).mean()[0] - seat_fslip_data.dropna().astype(float).mean()[0]
 					st.metric("Effective Length (deg)", round(eff_length,1))
 				with col5:
 					st.metric('Average Seat Power', round(seat_power_data.mean(),2), delta= float(seat_power_data.mean() - swivel_pow_avg))
