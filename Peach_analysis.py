@@ -495,7 +495,7 @@ else:
 					eff_length = length - seat_cslip_data.dropna().astype(float).mean()[0] - seat_fslip_data.dropna().astype(float).mean()[0]
 					st.metric("Effective Length (deg)", round(eff_length,1))
 				with col5:
-					st.metric('Average Seat Power', round(seat_power_data.mean(),2), delta= float(seat_power_data.mean() - swivel_pow_avg))
+					st.metric('Average Seat Power', round(seat_power_data.mean(),2), delta= round(float(seat_power_data.mean() - swivel_pow_avg),2))
 
 
 			fig = go.Figure()
