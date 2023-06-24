@@ -47,6 +47,23 @@ def lowpass(signal, highcut):
 	y = sp.signal.filtfilt(b,a, signal, axis = 0)
 	return(y)
 
+def group_data(array, threshold):
+	    groups = []
+	    current_group = [array[0]]
+
+	    for i in range(1, len(array)):
+	        diff = array[i] - array[i - 1]
+	        if diff > threshold:
+	            groups.append(current_group)
+	            current_group = [array[i]]
+	        else:
+	            current_group.append(array[i])
+	    if len(current_group) >= 3:  # Append the last group if it has at least 3 items
+        	groups.append(current_group)
+
+	    return groups
+
+
 os_name = platform.system()
 
 uploaded_data = st.file_uploader('select file for analysis')
@@ -102,47 +119,53 @@ else:
 	#Aperiodic Data
 	aperiodic_data = data.iloc[aperiodic[0]:].reset_index(drop=True)
 	AP_cutttoff = np.where(aperiodic_data.iloc[0] == 'AvgBoatSpeed')[0][0]
+	
 
 	
 	boat_speed = aperiodic_data.iloc[:,AP_cutttoff][3:np.where(aperiodic_data['File Info'] == 'Aperiodic')[0][0]].reset_index(drop=True)
 	boat_speed = np.array(boat_speed.astype(float))
 	boat_speed = boat_speed[np.logical_not(np.isnan(boat_speed))]
 
-	vel_threshold = boat_speed.max()-1.3
+	boat_rate = aperiodic_data.iloc[:,AP_cutttoff-1][3:np.where(aperiodic_data['File Info'] == 'Aperiodic')[0][0]].reset_index(drop=True)
+	boat_rate = np.array(boat_rate.astype(float))
+	boat_rate = boat_rate[np.logical_not(np.isnan(boat_rate))]
 
 
-	threshold = st.number_input('Detect Velcoity Above:', value=round(vel_threshold,1))
+	vel_threshold = boat_speed.max()-2
+	rate_threshold = 30
 
-	Threshold_velocity = np.where(boat_speed >= threshold)[0]
-	
-
-	def group_data(array, threshold):
-	    groups = []
-	    current_group = [array[0]]
-
-	    for i in range(1, len(array)):
-	        diff = array[i] - array[i - 1]
-	        if diff > threshold:
-	            groups.append(current_group)
-	            current_group = [array[i]]
-	        else:
-	            current_group.append(array[i])
-	    if len(current_group) >= 3:  # Append the last group if it has at least 3 items
-        	groups.append(current_group)
-
-	    return groups
-
-	section_indexes = group_data(Threshold_velocity, 1)
+	peice_criteria = st.selectbox("Split into Pieces Using:", ['Velocity', 'Stroke Rate'])
 
 	
+	if peice_criteria == 'Velocity':
+		threshold = st.number_input('Detect Velcoity Above:', value=round(vel_threshold,1))
+		Threshold_velocity = np.where(boat_speed >= threshold)[0]
+		Threshold_velocity = np.where(boat_speed >= threshold)[0]
+		section_indexes = group_data(Threshold_velocity, 2)
+
+	
+	if peice_criteria == 'Stroke Rate':
+		threshold = st.number_input('Detect Rate Above:', value=round(rate_threshold,1))
+		Threshold_rate = np.where(boat_rate >= threshold)[0]
+		Threshold_rate = np.where(boat_rate >= threshold)[0]
+		section_indexes = group_data(Threshold_rate, 2)
+
+
 	fig1 = go.Figure()
 
-	
-	fig1.add_trace(go.Scatter(y=boat_speed,
-    	fill=None,
-    	mode='lines',
-    	line_color = 'blue',
-    	name = 'boat speed'))
+	if peice_criteria == 'Velocity':
+		fig1.add_trace(go.Scatter(y=boat_speed,
+	    	fill=None,
+	    	mode='lines',
+	    	line_color = 'blue',
+	    	name = 'boat speed'))
+	if peice_criteria == 'Stroke Rate':
+		fig1.add_trace(go.Scatter(y=boat_rate,
+	    	fill=None,
+	    	mode='lines',
+	    	line_color = 'blue',
+	    	name = 'Stoke Rate'))
+
 	for section in section_indexes: 
 		if len(section)>2:
 
@@ -242,8 +265,6 @@ else:
 			finish_slip = np.where(aperiodic_data.iloc[0].str.endswith('FinishSlip'))[0]
 			finish_slip = aperiodic_data.iloc[:,finish_slip]
 			finish_slip_crop = finish_slip[aperiodic_onset+2:aperiodic_offset].astype(float)
-	
-			
 
 			min_angle = np.where(aperiodic_data.iloc[0].str.endswith('MinAngle'))[0]
 			if len(min_angle) < seats: 
@@ -322,8 +343,7 @@ else:
 			trace_data = pos_trace_data.append(neg_trace_data, ignore_index=True)
 			trace_data.columns = ['angles', 'accel']
 			    
-			fig2.add_trace(go.Scatter(x=trace_data['angles'], y=trace_data['accel'],
-			
+			fig2.add_trace(go.Scatter(x=trace_data['angles'], y=trace_data['accel'],			
 		    	fill=None,
 		    	mode='markers',
 		    	line_color = 'red',
@@ -388,8 +408,6 @@ else:
 		
 
 
-
-
 			col4, col5, col6 = st.columns(3)
 				
 			with col4:
@@ -449,7 +467,7 @@ else:
 			seat_max_data = seat_max_data.astype(float)
 			
 			average_seat_pow = seat_power_data.mean()
-			st.write(swivel_pow_avg)
+			
 			
 			if len(seat_max_data.columns)>1:
 				
