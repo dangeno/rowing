@@ -73,6 +73,7 @@ frequency = 50
 #for i in range(len(file_paths)): 
 if uploaded_data is None:
 	st.header("Select Session")
+	st.cache_data.clear()
 	st.stop()
 
 #if boat_select == 'Select Session':
