@@ -238,139 +238,365 @@ else:
 	avg_catch = []
 	avg_fin = []
 
+	peice_arrays = []
+
 	for section in section_indexes: 
-
-
-
 		if len(section)>5:
-
 			count += 1
+			peice_arrays.append(section)
+
+	
+	section = st.multiselect('Select Peice',range(1,count+1), default = 1)
 
 
-			time_on = aperiodic_data.iloc[:,0][section[0]+3]
-			time_off = aperiodic_data.iloc[:,0][section[-1]]
+	if len(section)<1: 
+		st.header('Select Peice')
+		st.stop()
+	else:
+		index_list=[]
+		for i in section: 
+			i = i-1
+			index_list.append(peice_arrays[i])
+	
 
-			periodic_onset = np.where(periodic_data.iloc[:,0][2:].astype(int) >= int(time_on))[0][0]
-			periodic_offset = np.where(periodic_data.iloc[:,0][2:].astype(int) >= int(time_off))[0][0]
 
-			aperiodic_data.iloc[:,0] = pd.to_numeric(aperiodic_data.iloc[:,0],errors='coerce')
-			aperiodic_onset = np.where(aperiodic_data.iloc[3:,0].astype(float) >= int(time_on))[0][0]
-			aperiodic_offset = np.where(aperiodic_data.iloc[3:,0].astype(float) >= int(time_off))[0][0]
+	for section in index_list:
+		count += 1
+		
+
+
+		time_on = aperiodic_data.iloc[:,0][section[0]+3]
+		time_off = aperiodic_data.iloc[:,0][section[-1]]
+
+		periodic_onset = np.where(periodic_data.iloc[:,0][2:].astype(int) >= int(time_on))[0][0]
+		periodic_offset = np.where(periodic_data.iloc[:,0][2:].astype(int) >= int(time_off))[0][0]
+
+		aperiodic_data.iloc[:,0] = pd.to_numeric(aperiodic_data.iloc[:,0],errors='coerce')
+		aperiodic_onset = np.where(aperiodic_data.iloc[3:,0].astype(float) >= int(time_on))[0][0]
+		aperiodic_offset = np.where(aperiodic_data.iloc[3:,0].astype(float) >= int(time_off))[0][0]
+		
+
+		boat_dist = np.where(periodic_data.iloc[0,:]=='Distance')[0]
+		boat_dist = periodic_data.iloc[2:,boat_dist]
+
+
+		boat_dist = (boat_dist.iloc[periodic_onset:periodic_offset,:].astype(float) - boat_dist.iloc[periodic_onset,:].astype(float))
+		power_data = np.where(aperiodic_data.iloc[0].str.endswith('Average Power'))[0]	
+		power_data = aperiodic_data.iloc[:,power_data].dropna()
+		power_data_crop = power_data[aperiodic_onset:aperiodic_offset]
+		power_data_crop = power_data_crop.iloc[3:,1].astype(float)
+		#power_data_crop = np.array(power_data_crop)
+		
+		swivel_pow = np.where(aperiodic_data.iloc[0].str.endswith('Rower Swivel Power'))[0]
+
+		swivel_pow = aperiodic_data.iloc[:,swivel_pow]
+
+		swivel_pow_crop = swivel_pow.iloc[aperiodic_onset+2:aperiodic_offset,:]
+		
+		#swivel_pow_avg = swivel_pow_crop.iloc[:, 5:].astype(float)
+		swivel_pow_avg = swivel_pow_crop.iloc[:,1:].astype(float)
+		
+
+		#for export			
+		avg_seat_power.append(swivel_pow_avg.mean(axis = 0))
+
+		
+		swivel_pow_avg = swivel_pow_avg.mean(axis =1)
+		swivel_pow_avg = swivel_pow_avg.mean()
+		
+		forceX_data = np.where(periodic_data.iloc[0].str.endswith('GateForceX'))[0]
+		forceX_data = periodic_data.iloc[:,forceX_data]
+		forceX_data_crop = forceX_data[periodic_onset+2:periodic_offset].astype(float)
+		
+
+		catch_slip = np.where(aperiodic_data.iloc[0].str.endswith('CatchSlip'))[0]
+		catch_slip = aperiodic_data.iloc[:,catch_slip]
+		catch_slip_crop = catch_slip[aperiodic_onset+2:aperiodic_offset].astype(float)
+
+		#for export
+		avg_CS = catch_slip_crop.iloc[:,1:len(name_list)+1]
+		avg_CS = avg_CS.mean(axis = 0)
+		avg_c_slip.append(avg_CS)
+
+		finish_slip = np.where(aperiodic_data.iloc[0].str.endswith('FinishSlip'))[0]
+		finish_slip = aperiodic_data.iloc[:,finish_slip]
+		finish_slip_crop = finish_slip[aperiodic_onset+2:aperiodic_offset].astype(float)
+
+		#for export
+		avg_FS = finish_slip_crop.iloc[:,1:len(name_list)+1]
+		avg_FS = avg_FS.mean(axis = 0)
+		avg_f_slip.append(avg_FS)
+
+
+		min_angle = np.where(aperiodic_data.iloc[0].str.endswith('MinAngle'))[0]
+		if len(min_angle) < seats: 
+			min_angle = np.where(aperiodic_data.iloc[0].str.endswith('Min Angle'))[0]
+		
+		min_angle = aperiodic_data.iloc[:,min_angle]
+		min_angle_crop = min_angle[aperiodic_onset+2:aperiodic_offset].astype(float)
+
+		avg_min = min_angle_crop.iloc[:,1:len(name_list)+1]
+		avg_min = avg_min.mean(axis = 0)
+		avg_catch.append(avg_min)
+
+
+		max_angle = np.where(aperiodic_data.iloc[0].str.endswith('MaxAngle'))[0]
+		max_angle = aperiodic_data.iloc[:,max_angle]
+		max_angle_crop = max_angle[aperiodic_onset+2:aperiodic_offset].astype(float)
+
+		avg_max = max_angle_crop.iloc[:,1:len(name_list)+1]
+		avg_max = avg_max.mean(axis = 0)
+		avg_fin.append(avg_max)
+		
+
+		gate_vel = np.where(periodic_data.iloc[0].str.endswith('GateAngleVel'))[0]
+		gate_vel = gate_vel[:seats]
+		
+		gate_vel = periodic_data.iloc[:,gate_vel]
+		gate_vel = gate_vel[periodic_onset+2:periodic_offset].astype(float)
+
+
+		#Analyze gate data
+
+		angle_data = np.where(periodic_data.iloc[0].str.endswith('GateAngle'))[0]
+		angle_data = periodic_data.iloc[:,angle_data]
+		angle_data_crop = angle_data[periodic_onset+2:periodic_offset].astype(float)
+		avg_angle = angle_data_crop.mean(axis=1)
+		
+		
+		accel_data = np.where(periodic_data.iloc[0].str.endswith('Accel'))[0]
+		accel_data = periodic_data.iloc[:,accel_data]
+		accel_data_crop = accel_data[periodic_onset+2:periodic_offset].iloc[:,0]
+		accel_data_crop= pd.to_numeric(accel_data_crop, errors='coerce')
+		
+		plot_accel = lowpass(accel_data_crop,5)
+		
+		fig2 = go.Figure()
+
+		fig2.add_trace(go.Scatter(x=avg_angle, y=plot_accel,
+	    	fill=None,
+	    	mode='lines',
+	    	line_color = 'blue',
+	    	opacity=.6,
+	    	name = 'Acceleration'))
+		
+
+		round_angle = avg_angle.round()
+		postive_pairs = []
+		negative_pairs = []
+		positive_y_values = []
+		negative_y_values = []
+		previous_x = None
+
+		for x, y in zip(round_angle, accel_data_crop):
+			if previous_x is not None:
+				if x > previous_x:
+					positive_y_values.append(y)
+					postive_pairs.append((x, y))
+				elif x < previous_x:
+					negative_y_values.append(y)
+					negative_pairs.append((x, y))
 			
+			previous_x = x
+		
+		pos_trace_data = pd.DataFrame(postive_pairs).astype(float)
+		pos_trace_data.columns = ['angles', 'accel']
+		pos_trace_data = pos_trace_data.groupby(['angles']).mean()
+		pos_trace_data = pos_trace_data.reset_index()
 
-			boat_dist = np.where(periodic_data.iloc[0,:]=='Distance')[0]
-			boat_dist = periodic_data.iloc[2:,boat_dist]
+		neg_trace_data = pd.DataFrame(negative_pairs).astype(float)
+		neg_trace_data.columns = ['angles', 'accel']
+		neg_trace_data = neg_trace_data.groupby(['angles']).mean()
+		neg_trace_data = neg_trace_data.reset_index()
+
+		trace_data = pd.concat([pos_trace_data,neg_trace_data], ignore_index=True)
+		trace_data.columns = ['angles', 'accel']
+		    
+		fig2.add_trace(go.Scatter(x=trace_data['angles'], y=trace_data['accel'],			
+	    	fill=None,
+	    	mode='markers',
+	    	line_color = 'red',
+	    	name = 'Average Acceleration'))
+
+		fig2.add_hline(y=0)
+		
+		fig2.update_layout(title = f"<b>Boat Acceleration Vs. Gate Average Angle", 
+							xaxis_title = '<b>Average Gate Angle<b> (Degrees)', 
+							yaxis_title = '<b>Boat Acceleration<b> (m/s2)')
+		if plot_show==True:
+			st.plotly_chart(fig2)
 
 
-			boat_dist = (boat_dist.iloc[periodic_onset:periodic_offset,:].astype(float) - boat_dist.iloc[periodic_onset,:].astype(float))
-			power_data = np.where(aperiodic_data.iloc[0].str.endswith('Average Power'))[0]	
-			power_data = aperiodic_data.iloc[:,power_data].dropna()
-			power_data_crop = power_data[aperiodic_onset:aperiodic_offset]
-			power_data_crop = power_data_crop.iloc[3:,1].astype(float)
-			#power_data_crop = np.array(power_data_crop)
+		angle_vel = np.where(periodic_data.iloc[0].str.endswith('GateAngleVel'))[0]
+		angle_vel = periodic_data.iloc[:,angle_vel]
+		angle_vel_crop = angle_vel[periodic_onset:periodic_offset]
+
+		forceX_data_crop.replace("", float('NaN'), inplace=True)
+		forceX_data_crop.dropna(how='all', axis = 1, inplace=True)
+		
+		mean_force = forceX_data_crop.mean(axis = 1).reset_index(drop = True)
+
+		mean_gate_angle = angle_data_crop.mean(axis = 1).reset_index(drop = True)
+
+		fig3 = go.Figure()
+		fig3.update_layout(title = f"<b>Angular Velocity Vs. Gate Angle:<b> Piece {count}", 
+								xaxis_title = '<b>Gate Angle<b> (Deg)', 
+								yaxis_title = '<b>Gate Velocity<b> (Deg/s)')
+
+		if plot_show == True:
+
+			if rig =='sculling': 
+				fig4 = go.Figure()
+				
+				for seat in range(0,seats):
+					if port_star_sel == 'Port':
+						fig3.add_trace(go.Scatter(x=angle_data_crop.iloc[:,seat], y=angle_vel_crop.iloc[:,seat],
+					    	fill=None,
+					    	mode='lines',
+					    	#line_color = 'red',
+					    	name = f'Port Angle Velocity Vs. Angle Seat {seat+1}'))
+					if port_star_sel == 'Starboard':
+						fig3.add_trace(go.Scatter(x=angle_data_crop.iloc[:,(seat+seats)], y=angle_vel_crop.iloc[:,(seat+seats)],
+					    	fill=None,
+					    	mode='lines',
+					    	#line_color = 'red',
+					    	name = f'Sartboard Angle Velocity Vs. Angle Seat {seat+1}'))
+				
+				st.plotly_chart(fig3)
+				
+			else: 
+				for seat in range(0,seats):
+					fig3.add_trace(go.Scatter(x=angle_data_crop.iloc[:,seat], y=angle_vel_crop.iloc[:,seat],
+					    	fill=None,
+					    	mode='lines',
+					    	#line_color = 'red',
+					    	name = f'Angle Velocity Vs. Angle Seat {seat+1}'))
+
+				st.plotly_chart(fig3)
+
+	
+
+
+		col4, col5, col6 = st.columns(3)
 			
-			swivel_pow = np.where(aperiodic_data.iloc[0].str.endswith('Rower Swivel Power'))[0]
-
-			swivel_pow = aperiodic_data.iloc[:,swivel_pow]
-
-			swivel_pow_crop = swivel_pow.iloc[aperiodic_onset+2:aperiodic_offset,:]
+		with col4:
+			st.metric('Average Boat Power', round(np.mean(power_data_crop),2))
+		with col5: 
+			avg_speed = np.mean(boat_speed[section[0]:section[-1]])
+			avg_speed = round(avg_speed,3)
+			st.metric('Avg Boat Speed', avg_speed)
 			
-			#swivel_pow_avg = swivel_pow_crop.iloc[:, 5:].astype(float)
-			swivel_pow_avg = swivel_pow_crop.iloc[:,1:].astype(float)
+		with col6: 
+			final_dist = float(boat_dist.max())
+			st.metric('Piece Distance (m)', round(final_dist))
+
+
+		athlete_select = np.where(pd.Series(name_list).str.contains(name_select))[0][0]+1
+
+		#Angle Data
+		seat_angle = np.where(pd.to_numeric(angle_data.iloc[1], errors='coerce') == athlete_select)[0]
+		seat_angle_data = angle_data_crop.iloc[:,seat_angle].reset_index(drop=True)
+		seat_angle_data = seat_angle_data[2:]
+		
+
+		#Force Data
+		seat_forceX = np.where(pd.to_numeric(forceX_data.iloc[1], errors='coerce')== athlete_select)[0]
+		seat_forceX_data = forceX_data_crop.iloc[:,seat_forceX].reset_index(drop=True)
+		seat_forceX_data = seat_forceX_data[2:]
+
+		extremes = list(np.where(abs(seat_angle_data.astype(float))>100)[0])
+		force_extremes = list(np.where(abs(seat_forceX_data.astype(float))>200)[0])
+
+		
+
+		#Power Data
+		seat_power = np.where(pd.to_numeric(swivel_pow.iloc[1], errors='coerce') == athlete_select)[0]
+		seat_power_data = swivel_pow_crop.iloc[2:,seat_power].astype(float)
+
+		#Removing extreme angle data	
+		if len(extremes)>0 or len(force_extremes)>0:
+			seat_angle_data = seat_angle_data.drop(extremes)
+			seat_forceX_data = seat_forceX_data.drop(extremes)
 			
+		
 
-			#for export			
-			avg_seat_power.append(swivel_pow_avg.mean(axis = 0))
+		#Slip Data	
+		seat_cslip = np.where(pd.to_numeric(catch_slip.iloc[1], errors='coerce')== athlete_select)[0]
+		seat_cslip_data = catch_slip_crop.iloc[2:,seat_cslip].reset_index(drop=True)
+		
+		seat_fslip = np.where(pd.to_numeric(finish_slip.iloc[1], errors='coerce')== athlete_select)[0]
+		seat_fslip_data = finish_slip_crop.iloc[2:,seat_fslip].reset_index(drop=True)
+		
+
+		#Length Data
+		seat_min = np.where(pd.to_numeric(min_angle.iloc[1], errors='coerce')== athlete_select)[0]
+		seat_min_data = min_angle_crop.iloc[2:,seat_min].reset_index(drop=True)
+		seat_min_data = seat_min_data.astype(float)
+
+
+		
+		seat_max = np.where(pd.to_numeric(max_angle.iloc[1], errors='coerce')== athlete_select)[0]
+		seat_max_data = max_angle_crop.iloc[2:,seat_max].reset_index(drop=True)
+		seat_max_data = seat_max_data.astype(float)
+		
+		average_seat_pow = seat_power_data.mean()
+		
+		
+		if len(seat_max_data.columns)>1:
+			
+			for col in range(len(seat_max_data.columns)): 
+				length = seat_max_data.iloc[:,col] - seat_min_data.iloc[:,col]
+				length = length.dropna()
+				length = np.mean(length)
+				eff_length = length - seat_cslip_data.iloc[:,col].dropna().mean() - seat_fslip_data.iloc[:,col].dropna().mean()
+				
+				
+				if col == 1:
+					with col4:
+						st.metric("P Effective Length (deg)", round(eff_length,1))
+				else:
+					with col5: 
+						st.metric("S Effective Length (deg)", round(eff_length,1))
+			with col6:
+				st.metric('Average Seat Power', round(seat_power_data.mean(),2))
+		
+		else: 
+			with col4: 
+				length = np.array(seat_max_data.dropna()) - np.array(seat_min_data.dropna())
+				length = np.mean(length)
+				
+				eff_length = length - seat_cslip_data.dropna().astype(float).mean()[0] - seat_fslip_data.dropna().astype(float).mean()[0]
+				st.metric("Effective Length (deg)", round(eff_length,1))
+			with col5:
+				st.metric('Average Seat Power', round(seat_power_data.mean(),2), delta= round(float(seat_power_data.mean() - swivel_pow_avg),2))
+
+
+		fig = go.Figure()
+		fig.update_layout(xaxis_range=[-70,70])
+		st.header('Slips')
+		col7, col8 = st.columns(2)
+
+		gate_count = 0
+
+
+		for gate in range(len(seat_forceX)):
+			gate_count += 1
+			
+			front_slip = seat_min_data.iloc[:,gate].astype(float) + seat_cslip_data.iloc[:,gate].astype(float)
+			end_slip = seat_max_data.iloc[:,gate].astype(float) - seat_fslip_data.iloc[:,gate].astype(float)
+			min_mean = np.mean(seat_min_data.iloc[:,gate].astype(float))
+			max_mean = np.mean(seat_max_data.iloc[:,gate].astype(float))
+			front_res = np.mean(front_slip) - min_mean
+			end_res = max_mean - np.mean(end_slip)
 
 			
-			swivel_pow_avg = swivel_pow_avg.mean(axis =1)
-			swivel_pow_avg = swivel_pow_avg.mean()
-			
-			forceX_data = np.where(periodic_data.iloc[0].str.endswith('GateForceX'))[0]
-			forceX_data = periodic_data.iloc[:,forceX_data]
-			forceX_data_crop = forceX_data[periodic_onset+2:periodic_offset].astype(float)
-			
-
-			catch_slip = np.where(aperiodic_data.iloc[0].str.endswith('CatchSlip'))[0]
-			catch_slip = aperiodic_data.iloc[:,catch_slip]
-			catch_slip_crop = catch_slip[aperiodic_onset+2:aperiodic_offset].astype(float)
-
-			#for export
-			avg_CS = catch_slip_crop.iloc[:,1:len(name_list)+1]
-			avg_CS = avg_CS.mean(axis = 0)
-			avg_c_slip.append(avg_CS)
-
-			finish_slip = np.where(aperiodic_data.iloc[0].str.endswith('FinishSlip'))[0]
-			finish_slip = aperiodic_data.iloc[:,finish_slip]
-			finish_slip_crop = finish_slip[aperiodic_onset+2:aperiodic_offset].astype(float)
-
-			#for export
-			avg_FS = finish_slip_crop.iloc[:,1:len(name_list)+1]
-			avg_FS = avg_FS.mean(axis = 0)
-			avg_f_slip.append(avg_FS)
-
-
-			min_angle = np.where(aperiodic_data.iloc[0].str.endswith('MinAngle'))[0]
-			if len(min_angle) < seats: 
-				min_angle = np.where(aperiodic_data.iloc[0].str.endswith('Min Angle'))[0]
-			
-			min_angle = aperiodic_data.iloc[:,min_angle]
-			min_angle_crop = min_angle[aperiodic_onset+2:aperiodic_offset].astype(float)
-
-			avg_min = min_angle_crop.iloc[:,1:len(name_list)+1]
-			avg_min = avg_min.mean(axis = 0)
-			avg_catch.append(avg_min)
-
-
-			max_angle = np.where(aperiodic_data.iloc[0].str.endswith('MaxAngle'))[0]
-			max_angle = aperiodic_data.iloc[:,max_angle]
-			max_angle_crop = max_angle[aperiodic_onset+2:aperiodic_offset].astype(float)
-
-			avg_max = max_angle_crop.iloc[:,1:len(name_list)+1]
-			avg_max = avg_max.mean(axis = 0)
-			avg_fin.append(avg_max)
-			
-
-			gate_vel = np.where(periodic_data.iloc[0].str.endswith('GateAngleVel'))[0]
-			gate_vel = gate_vel[:seats]
-			
-			gate_vel = periodic_data.iloc[:,gate_vel]
-			gate_vel = gate_vel[periodic_onset+2:periodic_offset].astype(float)
-
-
-			#Analyze gate data
-
-			angle_data = np.where(periodic_data.iloc[0].str.endswith('GateAngle'))[0]
-			angle_data = periodic_data.iloc[:,angle_data]
-			angle_data_crop = angle_data[periodic_onset+2:periodic_offset].astype(float)
-			avg_angle = angle_data_crop.mean(axis=1)
-			
-			
-			accel_data = np.where(periodic_data.iloc[0].str.endswith('Accel'))[0]
-			accel_data = periodic_data.iloc[:,accel_data]
-			accel_data_crop = accel_data[periodic_onset+2:periodic_offset].iloc[:,0]
-			accel_data_crop= pd.to_numeric(accel_data_crop, errors='coerce')
-			
-			plot_accel = lowpass(accel_data_crop,5)
-			
-			fig2 = go.Figure()
-
-			fig2.add_trace(go.Scatter(x=avg_angle, y=plot_accel,
-		    	fill=None,
-		    	mode='lines',
-		    	line_color = 'blue',
-		    	opacity=.6,
-		    	name = 'Acceleration'))
-			
-
-			round_angle = avg_angle.round()
 			postive_pairs = []
 			negative_pairs = []
 			positive_y_values = []
 			negative_y_values = []
 			previous_x = None
 
-			for x, y in zip(round_angle, accel_data_crop):
+			for x, y in zip(seat_angle_data.iloc[:,gate], seat_forceX_data.iloc[:,gate]):
 				if previous_x is not None:
 					if x > previous_x:
 						positive_y_values.append(y)
@@ -378,290 +604,82 @@ else:
 					elif x < previous_x:
 						negative_y_values.append(y)
 						negative_pairs.append((x, y))
-				
+
 				previous_x = x
-			
+
 			pos_trace_data = pd.DataFrame(postive_pairs).astype(float)
-			pos_trace_data.columns = ['angles', 'accel']
-			pos_trace_data = pos_trace_data.groupby(['angles']).mean()
+			pos_trace_data.columns = ['Angles', 'Force']
+			pos_trace_data = pos_trace_data.groupby(['Angles']).mean()
 			pos_trace_data = pos_trace_data.reset_index()
 
 			neg_trace_data = pd.DataFrame(negative_pairs).astype(float)
-			neg_trace_data.columns = ['angles', 'accel']
-			neg_trace_data = neg_trace_data.groupby(['angles']).mean()
+			neg_trace_data.columns = ['Angles', 'Force']
+			neg_trace_data = neg_trace_data.groupby(['Angles']).mean()
 			neg_trace_data = neg_trace_data.reset_index()
 
-			trace_data = pd.concat([pos_trace_data,neg_trace_data], ignore_index=True)
-			trace_data.columns = ['angles', 'accel']
-			    
-			fig2.add_trace(go.Scatter(x=trace_data['angles'], y=trace_data['accel'],			
+			neg_trace_data['Force'] = lowpass(neg_trace_data['Force'], 3)
+			pos_trace_data['Force'] = lowpass(pos_trace_data['Force'],3)
+			
+
+			if gate_count ==1:
+				color = '#1f77b4'
+			else: 
+				color = '#9467bd'
+
+			fig.add_trace(go.Scatter(x=pos_trace_data ['Angles'], y=pos_trace_data ['Force'],
 		    	fill=None,
-		    	mode='markers',
-		    	line_color = 'red',
-		    	name = 'Average Acceleration'))
-
-			fig2.add_hline(y=0)
+		    	mode='lines',
+		    	line_color = color,
+		    	name = 'Angle Vs. Force', 
+		    	showlegend=False ))
+			fig.add_trace(go.Scatter(x=neg_trace_data['Angles'], y=neg_trace_data['Force'],
+		    	fill=None,
+		    	mode='lines',
+		    	line_color = color,
+		    	name = 'Angle Vs. Force', 
+		    	showlegend=False ))
 			
-			fig2.update_layout(title = f"<b>Boat Acceleration Vs. Gate Average Angle", 
-								xaxis_title = '<b>Average Gate Angle<b> (Degrees)', 
-								yaxis_title = '<b>Boat Acceleration<b> (m/s2)')
-			if plot_show==True:
-				st.plotly_chart(fig2)
+			fig.add_vline(x=np.mean(front_slip), line_width=3, line_dash="dash", line_color=  f'#{gate}ca0{gate*5}c' , annotation_text= f'Catch Slip {gate_count}:  <b>{round(front_res)}<b>', annotation_textangle = 270, annotation_position="top left")
+			fig.add_vline(x=np.mean(end_slip), line_width=3, line_dash="dash", line_color=  f'#{gate}ca0{gate*5}c' , annotation_text= f'Finish Slip {gate_count}:  <b>{round(end_res)}<b>', annotation_textangle = 270, annotation_position="top left")
+			fig.update_layout(title = f"<b>Force Vs. Gate Angle:<b> {name_select} Seat {athlete_select} Piece {count}", 
+								xaxis_title = '<b>Gate Angle<b> (Degrees)', 
+								yaxis_title = '<b>Gate Force<b> (N)')
+			with col7: 
+				st.metric('Catch Slip', round(np.mean(front_res),2))
+				st.metric('Catch Length', round(np.mean(seat_min_data.iloc[:,gate].astype(float)),2))
+			with col8: 
+				st.metric('Finish Slip', round(np.mean(end_res),2))
+				st.metric('Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2))
+		st.plotly_chart(fig)
 
-
-			angle_vel = np.where(periodic_data.iloc[0].str.endswith('GateAngleVel'))[0]
-			angle_vel = periodic_data.iloc[:,angle_vel]
-			angle_vel_crop = angle_vel[periodic_onset:periodic_offset]
-
-			forceX_data_crop.replace("", float('NaN'), inplace=True)
-			forceX_data_crop.dropna(how='all', axis = 1, inplace=True)
-			
-			mean_force = forceX_data_crop.mean(axis = 1).reset_index(drop = True)
-
-			mean_gate_angle = angle_data_crop.mean(axis = 1).reset_index(drop = True)
-
-			fig3 = go.Figure()
-			fig3.update_layout(title = f"<b>Angular Velocity Vs. Gate Angle:<b> Piece {count}", 
-									xaxis_title = '<b>Gate Angle<b> (Deg)', 
-									yaxis_title = '<b>Gate Velocity<b> (Deg/s)')
-
-			if plot_show == True:
-
-				if rig =='sculling': 
-					fig4 = go.Figure()
-					
-					for seat in range(0,seats):
-						if port_star_sel == 'Port':
-							fig3.add_trace(go.Scatter(x=angle_data_crop.iloc[:,seat], y=angle_vel_crop.iloc[:,seat],
-						    	fill=None,
-						    	mode='lines',
-						    	#line_color = 'red',
-						    	name = f'Port Angle Velocity Vs. Angle Seat {seat+1}'))
-						if port_star_sel == 'Starboard':
-							fig3.add_trace(go.Scatter(x=angle_data_crop.iloc[:,(seat+seats)], y=angle_vel_crop.iloc[:,(seat+seats)],
-						    	fill=None,
-						    	mode='lines',
-						    	#line_color = 'red',
-						    	name = f'Sartboard Angle Velocity Vs. Angle Seat {seat+1}'))
-					
-					st.plotly_chart(fig3)
-					
-				else: 
-					for seat in range(0,seats):
-						fig3.add_trace(go.Scatter(x=angle_data_crop.iloc[:,seat], y=angle_vel_crop.iloc[:,seat],
-						    	fill=None,
-						    	mode='lines',
-						    	#line_color = 'red',
-						    	name = f'Angle Velocity Vs. Angle Seat {seat+1}'))
-
-					st.plotly_chart(fig3)
+		
+		if len(seat_power_data)>41: 
+			smoothed_power =  savgol_filter(seat_power_data.iloc[:, 0], window_length=40, polyorder=2)
+		else: 
+			smoothed_power =  savgol_filter(seat_power_data.iloc[:, 0], window_length=(len(seat_power_data) - 5), polyorder=2)
 
 		
 
 
-			col4, col5, col6 = st.columns(3)
-				
-			with col4:
-				st.metric('Average Boat Power', round(np.mean(power_data_crop),2))
-			with col5: 
-				avg_speed = np.mean(boat_speed[section[0]:section[-1]])
-				avg_speed = round(avg_speed,3)
-				st.metric('Avg Boat Speed', avg_speed)
-				
-			with col6: 
-				final_dist = float(boat_dist.max())
-				st.metric('Piece Distance (m)', round(final_dist))
+		fig5 = go.Figure()
+		fig5.update_layout(title = f"<b>Power Per Stroke<b> {name_select} Seat {athlete_select} Piece {count}", 
+								xaxis_title = '<b>Stroke (number)', 
+								yaxis_title = '<b>Swivel Power (Watts)')
+		fig5.add_trace(go.Scatter(y=seat_power_data.iloc[:,0],
+		    	fill=None,
+		    	mode='lines',
+		    	line_color = 'red',
+		    	name = 'Swivel Power'))
+		fig5.add_trace(go.Scatter(
+			    y=smoothed_power,
+			    fill=None,
+			    mode='lines',
+			    line_color='blue',
+			    name='Smoothed Power'))
+		st.plotly_chart(fig5)
 
-
-			athlete_select = np.where(pd.Series(name_list).str.contains(name_select))[0][0]+1
-
-			#Angle Data
-			seat_angle = np.where(pd.to_numeric(angle_data.iloc[1], errors='coerce') == athlete_select)[0]
-			seat_angle_data = angle_data_crop.iloc[:,seat_angle].reset_index(drop=True)
-			seat_angle_data = seat_angle_data[2:]
-			
-
-			#Force Data
-			seat_forceX = np.where(pd.to_numeric(forceX_data.iloc[1], errors='coerce')== athlete_select)[0]
-			seat_forceX_data = forceX_data_crop.iloc[:,seat_forceX].reset_index(drop=True)
-			seat_forceX_data = seat_forceX_data[2:]
-
-			extremes = list(np.where(abs(seat_angle_data.astype(float))>100)[0])
-			force_extremes = list(np.where(abs(seat_forceX_data.astype(float))>200)[0])
-
-			
-
-			#Power Data
-			seat_power = np.where(pd.to_numeric(swivel_pow.iloc[1], errors='coerce') == athlete_select)[0]
-			seat_power_data = swivel_pow_crop.iloc[2:,seat_power].astype(float)
-
-			#Removing extreme angle data	
-			if len(extremes)>0 or len(force_extremes)>0:
-				seat_angle_data = seat_angle_data.drop(extremes)
-				seat_forceX_data = seat_forceX_data.drop(extremes)
-				
-			
-
-			#Slip Data	
-			seat_cslip = np.where(pd.to_numeric(catch_slip.iloc[1], errors='coerce')== athlete_select)[0]
-			seat_cslip_data = catch_slip_crop.iloc[2:,seat_cslip].reset_index(drop=True)
-			
-			seat_fslip = np.where(pd.to_numeric(finish_slip.iloc[1], errors='coerce')== athlete_select)[0]
-			seat_fslip_data = finish_slip_crop.iloc[2:,seat_fslip].reset_index(drop=True)
-			
-
-			#Length Data
-			seat_min = np.where(pd.to_numeric(min_angle.iloc[1], errors='coerce')== athlete_select)[0]
-			seat_min_data = min_angle_crop.iloc[2:,seat_min].reset_index(drop=True)
-			seat_min_data = seat_min_data.astype(float)
-
-
-			
-			seat_max = np.where(pd.to_numeric(max_angle.iloc[1], errors='coerce')== athlete_select)[0]
-			seat_max_data = max_angle_crop.iloc[2:,seat_max].reset_index(drop=True)
-			seat_max_data = seat_max_data.astype(float)
-			
-			average_seat_pow = seat_power_data.mean()
-			
-			
-			if len(seat_max_data.columns)>1:
-				
-				for col in range(len(seat_max_data.columns)): 
-					length = seat_max_data.iloc[:,col] - seat_min_data.iloc[:,col]
-					length = length.dropna()
-					length = np.mean(length)
-					eff_length = length - seat_cslip_data.iloc[:,col].dropna().mean() - seat_fslip_data.iloc[:,col].dropna().mean()
-					
-					
-					if col == 1:
-						with col4:
-							st.metric("P Effective Length (deg)", round(eff_length,1))
-					else:
-						with col5: 
-							st.metric("S Effective Length (deg)", round(eff_length,1))
-				with col6:
-					st.metric('Average Seat Power', round(seat_power_data.mean(),2))
-			
-			else: 
-				with col4: 
-					length = np.array(seat_max_data.dropna()) - np.array(seat_min_data.dropna())
-					length = np.mean(length)
-					
-					eff_length = length - seat_cslip_data.dropna().astype(float).mean()[0] - seat_fslip_data.dropna().astype(float).mean()[0]
-					st.metric("Effective Length (deg)", round(eff_length,1))
-				with col5:
-					st.metric('Average Seat Power', round(seat_power_data.mean(),2), delta= round(float(seat_power_data.mean() - swivel_pow_avg),2))
-
-
-			fig = go.Figure()
-			fig.update_layout(xaxis_range=[-70,70])
-			st.header('Slips')
-			col7, col8 = st.columns(2)
-
-			gate_count = 0
-
-
-			for gate in range(len(seat_forceX)):
-				gate_count += 1
-				
-				front_slip = seat_min_data.iloc[:,gate].astype(float) + seat_cslip_data.iloc[:,gate].astype(float)
-				end_slip = seat_max_data.iloc[:,gate].astype(float) - seat_fslip_data.iloc[:,gate].astype(float)
-				min_mean = np.mean(seat_min_data.iloc[:,gate].astype(float))
-				max_mean = np.mean(seat_max_data.iloc[:,gate].astype(float))
-				front_res = np.mean(front_slip) - min_mean
-				end_res = max_mean - np.mean(end_slip)
-
-				
-				postive_pairs = []
-				negative_pairs = []
-				positive_y_values = []
-				negative_y_values = []
-				previous_x = None
-
-				for x, y in zip(seat_angle_data.iloc[:,gate], seat_forceX_data.iloc[:,gate]):
-					if previous_x is not None:
-						if x > previous_x:
-							positive_y_values.append(y)
-							postive_pairs.append((x, y))
-						elif x < previous_x:
-							negative_y_values.append(y)
-							negative_pairs.append((x, y))
-
-					previous_x = x
-
-				pos_trace_data = pd.DataFrame(postive_pairs).astype(float)
-				pos_trace_data.columns = ['Angles', 'Force']
-				pos_trace_data = pos_trace_data.groupby(['Angles']).mean()
-				pos_trace_data = pos_trace_data.reset_index()
-
-				neg_trace_data = pd.DataFrame(negative_pairs).astype(float)
-				neg_trace_data.columns = ['Angles', 'Force']
-				neg_trace_data = neg_trace_data.groupby(['Angles']).mean()
-				neg_trace_data = neg_trace_data.reset_index()
-
-				neg_trace_data['Force'] = lowpass(neg_trace_data['Force'], 3)
-				pos_trace_data['Force'] = lowpass(pos_trace_data['Force'],3)
-				
-
-				if gate_count ==1:
-					color = '#1f77b4'
-				else: 
-					color = '#9467bd'
-
-				fig.add_trace(go.Scatter(x=pos_trace_data ['Angles'], y=pos_trace_data ['Force'],
-			    	fill=None,
-			    	mode='lines',
-			    	line_color = color,
-			    	name = 'Angle Vs. Force', 
-			    	showlegend=False ))
-				fig.add_trace(go.Scatter(x=neg_trace_data['Angles'], y=neg_trace_data['Force'],
-			    	fill=None,
-			    	mode='lines',
-			    	line_color = color,
-			    	name = 'Angle Vs. Force', 
-			    	showlegend=False ))
-				
-				fig.add_vline(x=np.mean(front_slip), line_width=3, line_dash="dash", line_color=  f'#{gate}ca0{gate*5}c' , annotation_text= f'Catch Slip {gate_count}:  <b>{round(front_res)}<b>', annotation_textangle = 270, annotation_position="top left")
-				fig.add_vline(x=np.mean(end_slip), line_width=3, line_dash="dash", line_color=  f'#{gate}ca0{gate*5}c' , annotation_text= f'Finish Slip {gate_count}:  <b>{round(end_res)}<b>', annotation_textangle = 270, annotation_position="top left")
-				fig.update_layout(title = f"<b>Force Vs. Gate Angle:<b> {name_select} Seat {athlete_select} Piece {count}", 
-									xaxis_title = '<b>Gate Angle<b> (Degrees)', 
-									yaxis_title = '<b>Gate Force<b> (N)')
-				with col7: 
-					st.metric('Catch Slip', round(np.mean(front_res),2))
-					st.metric('Catch Length', round(np.mean(seat_min_data.iloc[:,gate].astype(float)),2))
-				with col8: 
-					st.metric('Finish Slip', round(np.mean(end_res),2))
-					st.metric('Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2))
-			st.plotly_chart(fig)
-
-			
-			if len(seat_power_data)>41: 
-				smoothed_power =  savgol_filter(seat_power_data.iloc[:, 0], window_length=40, polyorder=2)
-			else: 
-				smoothed_power =  savgol_filter(seat_power_data.iloc[:, 0], window_length=(len(seat_power_data) - 5), polyorder=2)
-
-			
-
-
-			fig5 = go.Figure()
-			fig5.update_layout(title = f"<b>Power Per Stroke<b> {name_select} Seat {athlete_select} Piece {count}", 
-									xaxis_title = '<b>Stroke (number)', 
-									yaxis_title = '<b>Swivel Power (Watts)')
-			fig5.add_trace(go.Scatter(y=seat_power_data.iloc[:,0],
-			    	fill=None,
-			    	mode='lines',
-			    	line_color = 'red',
-			    	name = 'Swivel Power'))
-			fig5.add_trace(go.Scatter(
-				    y=smoothed_power,
-				    fill=None,
-				    mode='lines',
-				    line_color='blue',
-				    name='Smoothed Power'))
-			st.plotly_chart(fig5)
-
-			for name in name_list: 
-				export_data = pd.Series([name, count, ])
+		for name in name_list: 
+			export_data = pd.Series([name, count, ])
 				
 	exp_seat_pow = pd.DataFrame(avg_seat_power)
 	exp_seat_pow = list(exp_seat_pow.mean(axis=0))
