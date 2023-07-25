@@ -716,12 +716,12 @@ else:
 
 	#push = st.button('Push to log?')
 	push = False
-	existing = '/Users/danielgeneau/Library/CloudStorage/OneDrive-SharedLibraries-RowingCanadaAviron/HP - Staff - SSSM/General/Biomechanics/Peach data/peach_log.csv'
+	#existing = '/Users/danielgeneau/Library/CloudStorage/OneDrive-SharedLibraries-RowingCanadaAviron/HP - Staff - SSSM/General/Biomechanics/Peach data/peach_log.csv'
 	if push: 
 		export_data.to_csv(existing, mode='a', index=False, header=False)
 	
-	excel_transfer = pd.read_csv(existing, names=export_data.columns)
-	excel_transfer.to_excel ('/Users/danielgeneau/Library/CloudStorage/OneDrive-SharedLibraries-RowingCanadaAviron/HP - Staff - SSSM/General/Biomechanics/Peach data/peach_log.xlsx', index = None)
+	#excel_transfer = pd.read_csv(existing, names=export_data.columns)
+	#excel_transfer.to_excel ('/Users/danielgeneau/Library/CloudStorage/OneDrive-SharedLibraries-RowingCanadaAviron/HP - Staff - SSSM/General/Biomechanics/Peach data/peach_log.xlsx', index = None)
 
 
 
