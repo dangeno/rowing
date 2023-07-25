@@ -104,14 +104,25 @@ else:
 			row_idx_names = np.where(data.iloc[:,col_idx_names]=='Abbreviation')[0][0]	
 
 	
-	
+	sides_start = np.where(data.iloc[:,0]=='Side')[0][0]+1
+	sides_end = np.where(data.iloc[:,1]=='Venue Info')[0][0]
+	sides = list(data.iloc[sides_start:sides_end, 1])
+
+
+
+
+
 	#Periodic Data
 	periodic = np.where(data['File Info'] == 'Periodic')[0][0]
 	periodic_data = data.iloc[periodic+1:].reset_index(drop=True)
 	cutttoff = np.where(periodic_data.iloc[1] == 'Boat')[0][0]
 	seats = int(periodic_data.iloc[1][1:cutttoff-1].max())
 	names = data.iloc[row_idx_names+1:row_idx_names+seats+1,col_idx_names]
+	seat_list = data.iloc[row_idx_names+1:row_idx_names+seats+1,0].tolist()
 	rig = data.iloc[row_idx_rig+1, col_idx_rig]
+	date = data.iloc[1,3]
+	time = date.split(' ')[-1]
+	date = uploaded_data.name.split(' ')[0]
 	
 	
 	
@@ -218,7 +229,19 @@ else:
 		if plot_show == True:
 			port_star_sel = st.selectbox('Select Gate', ['Port', 'Starboard'])
 
+	st.write(rig)
+	avg_c_slip = []
+	avg_f_slip = []
+	avg_seat_power = []
+	avg_boat_power = [] 
+	avg_eff_len = []
+	avg_catch = []
+	avg_fin = []
+
 	for section in section_indexes: 
+
+
+
 		if len(section)>5:
 
 			count += 1
@@ -255,8 +278,12 @@ else:
 			#swivel_pow_avg = swivel_pow_crop.iloc[:, 5:].astype(float)
 			swivel_pow_avg = swivel_pow_crop.iloc[:,1:].astype(float)
 			
-			swivel_pow_avg = swivel_pow_avg.mean(axis =1)
+
+			#for export			
+			avg_seat_power.append(swivel_pow_avg.mean(axis = 0))
+
 			
+			swivel_pow_avg = swivel_pow_avg.mean(axis =1)
 			swivel_pow_avg = swivel_pow_avg.mean()
 			
 			forceX_data = np.where(periodic_data.iloc[0].str.endswith('GateForceX'))[0]
@@ -268,9 +295,20 @@ else:
 			catch_slip = aperiodic_data.iloc[:,catch_slip]
 			catch_slip_crop = catch_slip[aperiodic_onset+2:aperiodic_offset].astype(float)
 
+			#for export
+			avg_CS = catch_slip_crop.iloc[:,1:len(name_list)+1]
+			avg_CS = avg_CS.mean(axis = 0)
+			avg_c_slip.append(avg_CS)
+
 			finish_slip = np.where(aperiodic_data.iloc[0].str.endswith('FinishSlip'))[0]
 			finish_slip = aperiodic_data.iloc[:,finish_slip]
 			finish_slip_crop = finish_slip[aperiodic_onset+2:aperiodic_offset].astype(float)
+
+			#for export
+			avg_FS = finish_slip_crop.iloc[:,1:len(name_list)+1]
+			avg_FS = avg_FS.mean(axis = 0)
+			avg_f_slip.append(avg_FS)
+
 
 			min_angle = np.where(aperiodic_data.iloc[0].str.endswith('MinAngle'))[0]
 			if len(min_angle) < seats: 
@@ -278,12 +316,19 @@ else:
 			
 			min_angle = aperiodic_data.iloc[:,min_angle]
 			min_angle_crop = min_angle[aperiodic_onset+2:aperiodic_offset].astype(float)
-			
+
+			avg_min = min_angle_crop.iloc[:,1:len(name_list)+1]
+			avg_min = avg_min.mean(axis = 0)
+			avg_catch.append(avg_min)
 
 
 			max_angle = np.where(aperiodic_data.iloc[0].str.endswith('MaxAngle'))[0]
 			max_angle = aperiodic_data.iloc[:,max_angle]
 			max_angle_crop = max_angle[aperiodic_onset+2:aperiodic_offset].astype(float)
+
+			avg_max = max_angle_crop.iloc[:,1:len(name_list)+1]
+			avg_max = avg_max.mean(axis = 0)
+			avg_fin.append(avg_max)
 			
 
 			gate_vel = np.where(periodic_data.iloc[0].str.endswith('GateAngleVel'))[0]
@@ -346,7 +391,7 @@ else:
 			neg_trace_data = neg_trace_data.groupby(['angles']).mean()
 			neg_trace_data = neg_trace_data.reset_index()
 
-			trace_data = pos_trace_data.append(neg_trace_data, ignore_index=True)
+			trace_data = pd.concat([pos_trace_data,neg_trace_data], ignore_index=True)
 			trace_data.columns = ['angles', 'accel']
 			    
 			fig2.add_trace(go.Scatter(x=trace_data['angles'], y=trace_data['accel'],			
@@ -444,11 +489,13 @@ else:
 			extremes = list(np.where(abs(seat_angle_data.astype(float))>100)[0])
 			force_extremes = list(np.where(abs(seat_forceX_data.astype(float))>200)[0])
 
+			
+
 			#Power Data
 			seat_power = np.where(pd.to_numeric(swivel_pow.iloc[1], errors='coerce') == athlete_select)[0]
 			seat_power_data = swivel_pow_crop.iloc[2:,seat_power].astype(float)
 
-				#Removing extreme angle data	
+			#Removing extreme angle data	
 			if len(extremes)>0 or len(force_extremes)>0:
 				seat_angle_data = seat_angle_data.drop(extremes)
 				seat_forceX_data = seat_forceX_data.drop(extremes)
@@ -467,6 +514,8 @@ else:
 			seat_min = np.where(pd.to_numeric(min_angle.iloc[1], errors='coerce')== athlete_select)[0]
 			seat_min_data = min_angle_crop.iloc[2:,seat_min].reset_index(drop=True)
 			seat_min_data = seat_min_data.astype(float)
+
+
 			
 			seat_max = np.where(pd.to_numeric(max_angle.iloc[1], errors='coerce')== athlete_select)[0]
 			seat_max_data = max_angle_crop.iloc[2:,seat_max].reset_index(drop=True)
@@ -511,11 +560,7 @@ else:
 
 			gate_count = 0
 
-			fig.add_trace(go.Scatter(x=mean_gate_angle, y=mean_force,
-						    	fill=None,
-						    	mode='lines',
-						    	opacity=0.5, 
-						    	name = 'Boat Average Force Trace'))
+
 			for gate in range(len(seat_forceX)):
 				gate_count += 1
 				
@@ -527,12 +572,55 @@ else:
 				end_res = max_mean - np.mean(end_slip)
 
 				
+				postive_pairs = []
+				negative_pairs = []
+				positive_y_values = []
+				negative_y_values = []
+				previous_x = None
 
-				fig.add_trace(go.Scatter(x=seat_angle_data.iloc[:,gate], y=seat_forceX_data.iloc[:,gate],
+				for x, y in zip(seat_angle_data.iloc[:,gate], seat_forceX_data.iloc[:,gate]):
+					if previous_x is not None:
+						if x > previous_x:
+							positive_y_values.append(y)
+							postive_pairs.append((x, y))
+						elif x < previous_x:
+							negative_y_values.append(y)
+							negative_pairs.append((x, y))
+
+					previous_x = x
+
+				pos_trace_data = pd.DataFrame(postive_pairs).astype(float)
+				pos_trace_data.columns = ['Angles', 'Force']
+				pos_trace_data = pos_trace_data.groupby(['Angles']).mean()
+				pos_trace_data = pos_trace_data.reset_index()
+
+				neg_trace_data = pd.DataFrame(negative_pairs).astype(float)
+				neg_trace_data.columns = ['Angles', 'Force']
+				neg_trace_data = neg_trace_data.groupby(['Angles']).mean()
+				neg_trace_data = neg_trace_data.reset_index()
+
+				neg_trace_data['Force'] = lowpass(neg_trace_data['Force'], 3)
+				pos_trace_data['Force'] = lowpass(pos_trace_data['Force'],3)
+				
+
+				if gate_count ==1:
+					color = '#1f77b4'
+				else: 
+					color = '#9467bd'
+
+				fig.add_trace(go.Scatter(x=pos_trace_data ['Angles'], y=pos_trace_data ['Force'],
 			    	fill=None,
 			    	mode='lines',
-			    	#line_color = 'red',
-			    	name = 'Angle Vs. Force'))
+			    	line_color = color,
+			    	name = 'Angle Vs. Force', 
+			    	showlegend=False ))
+				fig.add_trace(go.Scatter(x=neg_trace_data['Angles'], y=neg_trace_data['Force'],
+			    	fill=None,
+			    	mode='lines',
+			    	line_color = color,
+			    	name = 'Angle Vs. Force', 
+			    	showlegend=False ))
+				
 				fig.add_vline(x=np.mean(front_slip), line_width=3, line_dash="dash", line_color=  f'#{gate}ca0{gate*5}c' , annotation_text= f'Catch Slip {gate_count}:  <b>{round(front_res)}<b>', annotation_textangle = 270, annotation_position="top left")
 				fig.add_vline(x=np.mean(end_slip), line_width=3, line_dash="dash", line_color=  f'#{gate}ca0{gate*5}c' , annotation_text= f'Finish Slip {gate_count}:  <b>{round(end_res)}<b>', annotation_textangle = 270, annotation_position="top left")
 				fig.update_layout(title = f"<b>Force Vs. Gate Angle:<b> {name_select} Seat {athlete_select} Piece {count}", 
@@ -575,16 +663,51 @@ else:
 			for name in name_list: 
 				export_data = pd.Series([name, count, ])
 				
-				
+	exp_seat_pow = pd.DataFrame(avg_seat_power)
+	exp_seat_pow = list(exp_seat_pow.mean(axis=0))
 
+	exp_CS = pd.DataFrame(avg_c_slip)
+	exp_CS = list(exp_CS.mean(axis=0))
+
+	exp_FS = pd.DataFrame(avg_f_slip)
+	exp_FS = list(exp_FS.mean(axis=0))
 	
+	exp_catch = pd.DataFrame(avg_catch)
+	exp_catch = list(exp_catch.mean(axis=0))
 
+	exp_fin = pd.DataFrame(avg_fin)
+	exp_fin = list(exp_fin.mean(axis=0))
 
+	b_class = uploaded_data.name.split(' ')[-1].split('.')[0]
 	
 	
-	#stroke_impulse = integrate.cumtrapz(, dx = 1)
+	export_data = pd.DataFrame()
+	export_data['athletes'] = name_list
+	export_data['boat class'] = b_class
+	export_data['Date'] = date
+	export_data['sides'] = sides
+	export_data['seat'] = seat_list
+	export_data['average_seat_pow'] = exp_seat_pow
+	export_data['average_catch_slip'] = exp_CS
+	export_data['average_finish_slip'] = exp_FS
+	export_data['average_catch'] = exp_catch
+	export_data['average_finish'] = exp_fin
+	export_data['average_length'] = np.array(exp_fin) - np.array(exp_catch)
+	export_data['average_eff_len'] = np.array(exp_fin) - np.array(exp_catch) - np.array(exp_CS) - np.array(exp_FS)
+	st.write(export_data)
 
-	#fig2 = go.Figure()
+	#push = st.button('Push to log?')
+	push = False
+	existing = '/Users/danielgeneau/Library/CloudStorage/OneDrive-SharedLibraries-RowingCanadaAviron/HP - Staff - SSSM/General/Biomechanics/Peach data/peach_log.csv'
+	if push: 
+		export_data.to_csv(existing, mode='a', index=False, header=False)
+	
+	excel_transfer = pd.read_csv(existing, names=export_data.columns)
+	excel_transfer.to_excel ('/Users/danielgeneau/Library/CloudStorage/OneDrive-SharedLibraries-RowingCanadaAviron/HP - Staff - SSSM/General/Biomechanics/Peach data/peach_log.xlsx', index = None)
+
+
+
+
 
 	
 
