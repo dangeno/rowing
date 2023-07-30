@@ -285,6 +285,8 @@ else:
 		power_data = aperiodic_data.iloc[:,power_data].dropna()
 		power_data_crop = power_data[aperiodic_onset:aperiodic_offset]
 		power_data_crop = power_data_crop.iloc[3:,1].astype(float)
+
+
 		#power_data_crop = np.array(power_data_crop)
 		
 		swivel_pow = np.where(aperiodic_data.iloc[0].str.endswith('Rower Swivel Power'))[0]
@@ -295,6 +297,37 @@ else:
 		
 		#swivel_pow_avg = swivel_pow_crop.iloc[:, 5:].astype(float)
 		swivel_pow_avg = swivel_pow_crop.iloc[:,1:].astype(float)
+
+		fig6 = go.Figure()
+		count_pow =0
+		swivel_pow_plot = swivel_pow_crop.iloc[:,1:].reset_index(drop=True).dropna().astype(float)
+		
+		swivel_pow_plot = pd.DataFrame(lowpass(swivel_pow_plot,10))
+
+
+
+		for col in swivel_pow_plot.columns: 
+			count_pow += 1
+			fig6.add_trace(go.Scatter(y=swivel_pow_plot[col],
+		    	fill=None,
+		    	mode='lines',
+		    	name = f'Seat Power {count_pow}'))
+			mean_values = swivel_pow_plot[col].rolling(1).mean()
+			std_values = swivel_pow_plot[col].rolling(5).std()
+			upper_bound = np.array(mean_values + std_values)
+			lower_bound = np.array(mean_values - std_values)
+
+			# Add the shaded region representing the standard deviation
+			fig6.add_trace(go.Scatter(
+			    x=swivel_pow_plot.index.tolist() + swivel_pow_plot.index.tolist()[::-1],
+			    y=np.concatenate([upper_bound, lower_bound[::-1]]),
+			    fill='toself',  # This fills the area between the upper and lower bounds
+			    fillcolor='rgba(128, 128, 128, 0.2)',  # Adjust the color and opacity of the shading here
+			    line=dict(color='rgba(255, 255, 255, 0)'),  # This makes the outline of the shaded region transparent
+			    name=f'Seat Power {count_pow} (Std. Dev.)'
+			))
+
+		st.plotly_chart(fig6)
 		
 
 		#for export			
@@ -716,9 +749,9 @@ else:
 
 	#push = st.button('Push to log?')
 	push = False
-	#existing = '/Users/danielgeneau/Library/CloudStorage/OneDrive-SharedLibraries-RowingCanadaAviron/HP - Staff - SSSM/General/Biomechanics/Peach data/peach_log.csv'
+	existing = '/Users/danielgeneau/Library/CloudStorage/OneDrive-SharedLibraries-RowingCanadaAviron/HP - Staff - SSSM/General/Biomechanics/Peach data/peach_log.csv'
 	if push: 
-		export_data.to_csv(existing, mode='a', index=False, header=False)
+		export_data.to_csv(existing, mode='a', index=False, header=True)
 	
 	#excel_transfer = pd.read_csv(existing, names=export_data.columns)
 	#excel_transfer.to_excel ('/Users/danielgeneau/Library/CloudStorage/OneDrive-SharedLibraries-RowingCanadaAviron/HP - Staff - SSSM/General/Biomechanics/Peach data/peach_log.xlsx', index = None)
