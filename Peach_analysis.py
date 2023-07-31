@@ -83,11 +83,7 @@ else:
 	#data = pd.read_csv(f'{og_path}{delimiter}{session}{delimiter}{boat_select}.csv')
 	file_type = uploaded_data.name.split('.')[-1]
 	
-	@st.cache_data()
-	def load_data(): 
-		return pd.read_csv(uploaded_data, dtype=object)
-
-	data = load_data()
+	data = pd.read_csv(uploaded_data, dtype=object)
 	
 	data_array = data.values
 	data_list = data_array.tolist()
