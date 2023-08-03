@@ -537,10 +537,16 @@ else:
 		force_extremes = list(np.where(abs(seat_forceX_data.astype(float))>200)[0])
 
 		
-
+		
 		#Power Data
-		seat_power = np.where(pd.to_numeric(swivel_pow.iloc[1], errors='coerce') == athlete_select)[0]
-		seat_power_data = swivel_pow_crop.iloc[2:,seat_power].astype(float)
+		if rig == 'sculling': 
+
+			seat_power_data = swivel_pow_crop.iloc[2:,[(athlete_select*2-1),(athlete_select*2)]].astype(float)
+			
+		
+		else:
+			seat_power = np.where(pd.to_numeric(swivel_pow.iloc[1], errors='coerce') == athlete_select)[0]
+			seat_power_data = swivel_pow_crop.iloc[2:,seat_power].astype(float)
 
 		#Removing extreme angle data	
 		if len(extremes)>0 or len(force_extremes)>0:
@@ -569,6 +575,7 @@ else:
 		seat_max_data = seat_max_data.astype(float)
 		
 		average_seat_pow = seat_power_data.mean()
+
 		
 		
 		if len(seat_max_data.columns)>1:
@@ -586,8 +593,11 @@ else:
 				else:
 					with col5: 
 						st.metric("S Effective Length (deg)", round(eff_length,1))
-			with col6:
-				st.metric('Average Seat Power', round(seat_power_data.mean(),2))
+			
+				if col == 1:
+					with col6:
+						st.metric('Average Port Seat Power', round(seat_power_data.iloc[:,0].mean(),2))
+						st.metric('Average Sartboard Seat Power', round(seat_power_data.iloc[:,1].mean(),2))
 		
 		else: 
 			with col4: 
