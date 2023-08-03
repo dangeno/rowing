@@ -225,7 +225,7 @@ else:
 		if plot_show == True:
 			port_star_sel = st.selectbox('Select Gate', ['Port', 'Starboard'])
 
-	st.write(rig)
+	
 	avg_c_slip = []
 	avg_f_slip = []
 	avg_seat_power = []
@@ -284,15 +284,30 @@ else:
 
 
 		#power_data_crop = np.array(power_data_crop)
-		
-		swivel_pow = np.where(aperiodic_data.iloc[0].str.endswith('Rower Swivel Power'))[0]
 
-		swivel_pow = aperiodic_data.iloc[:,swivel_pow]
+		if rig == 'sweep':
+			swivel_pow = np.where(aperiodic_data.iloc[0].str.endswith('Rower Swivel Power'))[0]
+			swivel_pow = aperiodic_data.iloc[:,swivel_pow]
+			swivel_pow_crop = swivel_pow.iloc[aperiodic_onset+2:aperiodic_offset,:]
+			swivel_pow_avg = swivel_pow_crop.iloc[:,1:].astype(float)
+		elif rig == 'sculling': 
+			avg_pow = np.where(aperiodic_data.iloc[0].str.endswith('Rower Swivel Power'))[0]
+			avg_pow = aperiodic_data.iloc[:,avg_pow]
+			swivel_pow_p = list(np.where(aperiodic_data.iloc[0].str.endswith('P Swivel Power'))[0])
+			swivel_pow_s = list(np.where(aperiodic_data.iloc[0].str.endswith('S Swivel Power'))[0])[1:]
+			swivel_pow = swivel_pow_p + swivel_pow_s
+			
+			swivel_pow = aperiodic_data.iloc[:,swivel_pow]
+			swivel_pow_crop = swivel_pow.iloc[aperiodic_onset+2:aperiodic_offset,:]
+			avg_pow_crop = avg_pow.iloc[aperiodic_onset+2:aperiodic_offset,:]
+			swivel_pow_avg = avg_pow_crop.iloc[:,1:].astype(float)
+			
 
-		swivel_pow_crop = swivel_pow.iloc[aperiodic_onset+2:aperiodic_offset,:]
+
 		
-		#swivel_pow_avg = swivel_pow_crop.iloc[:, 5:].astype(float)
-		swivel_pow_avg = swivel_pow_crop.iloc[:,1:].astype(float)
+		
+		
+		
 
 		fig6 = go.Figure()
 		count_pow =0
@@ -326,8 +341,12 @@ else:
 		st.plotly_chart(fig6)
 		
 
-		#for export			
-		avg_seat_power.append(swivel_pow_avg.mean(axis = 0))
+		#for export
+		if rig == 'sweep':
+			avg_seat_power.append(swivel_pow_avg.mean(axis = 0))
+		elif rig == 'sculling':
+			avg_seat_power.append(swivel_pow_avg.mean(axis = 0))
+		
 
 		
 		swivel_pow_avg = swivel_pow_avg.mean(axis =1)
@@ -540,7 +559,7 @@ else:
 		
 		#Power Data
 		if rig == 'sculling': 
-
+			
 			seat_power_data = swivel_pow_crop.iloc[2:,[(athlete_select*2-1),(athlete_select*2)]].astype(float)
 			
 		
