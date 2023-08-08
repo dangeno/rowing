@@ -234,24 +234,26 @@ else:
 	avg_eff_len = []
 	avg_catch = []
 	avg_fin = []
+	count_sel = 0
 
 	peice_arrays = []
 
 	for section in section_indexes: 
 		if len(section)>5:
-			count += 1
+			count_sel += 1
 			peice_arrays.append(section)
 
 	
-	section = st.multiselect('Select Peice',range(1,count+1), default = 1)
+	section_sel = st.multiselect('Select Peice',range(1,count_sel+1), default = 1)
+	st.write(section)
 
 
-	if len(section)<1: 
+	if len(section_sel)<1: 
 		st.header('Select Peice')
 		st.stop()
 	else:
 		index_list=[]
-		for i in section: 
+		for i in section_sel: 
 			i = i-1
 			index_list.append(peice_arrays[i])
 	
@@ -351,7 +353,7 @@ else:
 			    	mode='lines',
 			    	name = f'Port Seat Power {count_pow}', 
 			    	line_color=f'rgb({color[0]*255},{color[1]*255},{color[2]*255})'))
-				fig6.add_trace(go.Scatter(y=swivel_pow_plot.iloc[:,i+4],
+				fig6.add_trace(go.Scatter(y=swivel_pow_plot.iloc[:,i+int(len(swivel_pow_plot.columns)/2)],
 			    	fill=None,
 			    	mode='lines',
 			    	name = f'Star Seat Power {count_pow}', 
@@ -580,7 +582,9 @@ else:
 		
 		#Power Data
 		if rig == 'sculling': 
-			seat_power_data = swivel_pow_crop.iloc[2:,[(athlete_select),(athlete_select*2)]].astype(float)
+			seat_power = np.where(pd.to_numeric(swivel_pow.iloc[1], errors='coerce') == athlete_select)[0]
+			seat_power_data = swivel_pow_crop.iloc[:,seat_power].astype(float)
+			
 			
 		
 		else:
@@ -614,6 +618,7 @@ else:
 		seat_max_data = seat_max_data.astype(float)
 		
 		average_seat_pow = seat_power_data.mean()
+
 
 		
 		
@@ -701,16 +706,18 @@ else:
 			
 
 			if gate_count ==1:
-				color = '#1f77b4'
+				color = 'green'
+				name = 'Port'
 			else: 
-				color = '#9467bd'
+				color = 'red'
+				name = 'Starboard'
 
 			fig.add_trace(go.Scatter(x=pos_trace_data ['Angles'], y=pos_trace_data ['Force'],
 		    	fill=None,
 		    	mode='lines',
 		    	line_color = color,
-		    	name = 'Angle Vs. Force', 
-		    	showlegend=False ))
+		    	name = name, 
+		    	showlegend=True ))
 			fig.add_trace(go.Scatter(x=neg_trace_data['Angles'], y=neg_trace_data['Force'],
 		    	fill=None,
 		    	mode='lines',
@@ -718,8 +725,8 @@ else:
 		    	name = 'Angle Vs. Force', 
 		    	showlegend=False ))
 			
-			fig.add_vline(x=np.mean(front_slip), line_width=3, line_dash="dash", line_color=  f'#{gate}ca0{gate*5}c' , annotation_text= f'Catch Slip {gate_count}:  <b>{round(front_res)}<b>', annotation_textangle = 270, annotation_position="top left")
-			fig.add_vline(x=np.mean(end_slip), line_width=3, line_dash="dash", line_color=  f'#{gate}ca0{gate*5}c' , annotation_text= f'Finish Slip {gate_count}:  <b>{round(end_res)}<b>', annotation_textangle = 270, annotation_position="top left")
+			fig.add_vline(x=np.mean(front_slip), line_width=3, line_dash="dash", line_color=  color, annotation_text= f'Catch Slip {gate_count}:  <b>{round(front_res)}<b>', annotation_textangle = 270, annotation_position="top left")
+			fig.add_vline(x=np.mean(end_slip), line_width=3, line_dash="dash", line_color=  color , annotation_text= f'Finish Slip {gate_count}:  <b>{round(end_res)}<b>', annotation_textangle = 270, annotation_position="top left")
 			fig.update_layout(title = f"<b>Force Vs. Gate Angle:<b> {name_select} Seat {athlete_select} Piece {count}", 
 								xaxis_title = '<b>Gate Angle<b> (Degrees)', 
 								yaxis_title = '<b>Gate Force<b> (N)')
@@ -732,30 +739,6 @@ else:
 		st.plotly_chart(fig)
 
 		
-		if len(seat_power_data)>41: 
-			smoothed_power =  savgol_filter(seat_power_data.iloc[:, 0], window_length=40, polyorder=2)
-		else: 
-			smoothed_power =  savgol_filter(seat_power_data.iloc[:, 0], window_length=(len(seat_power_data) - 5), polyorder=2)
-
-		
-
-
-		fig5 = go.Figure()
-		fig5.update_layout(title = f"<b>Power Per Stroke<b> {name_select} Seat {athlete_select} Piece {count}", 
-								xaxis_title = '<b>Stroke (number)', 
-								yaxis_title = '<b>Swivel Power (Watts)')
-		fig5.add_trace(go.Scatter(y=seat_power_data.iloc[:,0],
-		    	fill=None,
-		    	mode='lines',
-		    	line_color = 'red',
-		    	name = 'Swivel Power'))
-		fig5.add_trace(go.Scatter(
-			    y=smoothed_power,
-			    fill=None,
-			    mode='lines',
-			    line_color='blue',
-			    name='Smoothed Power'))
-		st.plotly_chart(fig5)
 
 		for name in name_list: 
 			export_data = pd.Series([name, count, ])
