@@ -245,7 +245,7 @@ else:
 
 	
 	section_sel = st.multiselect('Select Peice',range(1,count_sel+1), default = 1)
-	st.write(section)
+	
 
 
 	if len(section_sel)<1: 
