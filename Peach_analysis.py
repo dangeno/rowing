@@ -22,6 +22,7 @@ import timedelta
 from plotly.subplots import make_subplots
 from scipy.signal import find_peaks
 from scipy.signal import savgol_filter
+import matplotlib.cm as cm
 
 import scipy.integrate as integrate
 
@@ -314,29 +315,49 @@ else:
 		swivel_pow_plot = swivel_pow_crop.iloc[:,1:].reset_index(drop=True).dropna().astype(float)
 		
 		swivel_pow_plot = pd.DataFrame(lowpass(swivel_pow_plot,10))
+		
+		 
 
 
+		if rig == 'sweep':
+			for col in swivel_pow_plot.columns: 
 
-		for col in swivel_pow_plot.columns: 
-			count_pow += 1
-			fig6.add_trace(go.Scatter(y=swivel_pow_plot[col],
-		    	fill=None,
-		    	mode='lines',
-		    	name = f'Seat Power {count_pow}'))
-			mean_values = swivel_pow_plot[col].rolling(1).mean()
-			std_values = swivel_pow_plot[col].rolling(5).std()
-			upper_bound = np.array(mean_values + std_values)
-			lower_bound = np.array(mean_values - std_values)
+				count_pow += 1
+				fig6.add_trace(go.Scatter(y=swivel_pow_plot[col],
+			    	fill=None,
+			    	mode='lines',
+			    	name = f'Seat Power {count_pow}'))
+				mean_values = swivel_pow_plot[col].rolling(1).mean()
+				std_values = swivel_pow_plot[col].rolling(5).std()
+				upper_bound = np.array(mean_values + std_values)
+				lower_bound = np.array(mean_values - std_values)
 
-			# Add the shaded region representing the standard deviation
-			fig6.add_trace(go.Scatter(
-			    x=swivel_pow_plot.index.tolist() + swivel_pow_plot.index.tolist()[::-1],
-			    y=np.concatenate([upper_bound, lower_bound[::-1]]),
-			    fill='toself',  # This fills the area between the upper and lower bounds
-			    fillcolor='rgba(128, 128, 128, 0.2)',  # Adjust the color and opacity of the shading here
-			    line=dict(color='rgba(255, 255, 255, 0)'),  # This makes the outline of the shaded region transparent
-			    name=f'Seat Power {count_pow} (Std. Dev.)'
-			))
+				# Add the shaded region representing the standard deviation
+				fig6.add_trace(go.Scatter(
+				    x=swivel_pow_plot.index.tolist() + swivel_pow_plot.index.tolist()[::-1],
+				    y=np.concatenate([upper_bound, lower_bound[::-1]]),
+				    fill='toself',  # This fills the area between the upper and lower bounds
+				    fillcolor='rgba(128, 128, 128, 0.2)',  # Adjust the color and opacity of the shading here
+				    line=dict(color='rgba(255, 255, 255, 0)'),  # This makes the outline of the shaded region transparent
+				    name=f'Seat Power {count_pow} (Std. Dev.)'
+				))
+		if rig == 'sculling':
+			color_map = cm.get_cmap('tab10', int(len(swivel_pow_plot.columns)/2))
+			for i in range(0, int(len(swivel_pow_plot.columns)/2)): 
+				count_pow += 1
+				color = color_map(i / int(len(swivel_pow_plot.columns)/2)) 
+				fig6.add_trace(go.Scatter(y=swivel_pow_plot.iloc[:,i],
+			    	fill=None,
+			    	mode='lines',
+			    	name = f'Port Seat Power {count_pow}', 
+			    	line_color=f'rgb({color[0]*255},{color[1]*255},{color[2]*255})'))
+				fig6.add_trace(go.Scatter(y=swivel_pow_plot.iloc[:,i+4],
+			    	fill=None,
+			    	mode='lines',
+			    	name = f'Star Seat Power {count_pow}', 
+			    	line_color=f'rgb({color[0]*255},{color[1]*255},{color[2]*255})'))
+
+
 
 		st.plotly_chart(fig6)
 		
@@ -559,8 +580,7 @@ else:
 		
 		#Power Data
 		if rig == 'sculling': 
-			
-			seat_power_data = swivel_pow_crop.iloc[2:,[(athlete_select*2-1),(athlete_select*2)]].astype(float)
+			seat_power_data = swivel_pow_crop.iloc[2:,[(athlete_select),(athlete_select*2)]].astype(float)
 			
 		
 		else:
@@ -615,6 +635,7 @@ else:
 			
 				if col == 1:
 					with col6:
+						
 						st.metric('Average Port Seat Power', round(seat_power_data.iloc[:,0].mean(),2))
 						st.metric('Average Sartboard Seat Power', round(seat_power_data.iloc[:,1].mean(),2))
 		
