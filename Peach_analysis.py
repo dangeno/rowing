@@ -706,10 +706,10 @@ else:
 			
 
 			if gate_count ==1:
-				color = 'green'
+				color = 'red'
 				name = 'Port'
 			else: 
-				color = 'red'
+				color = 'green'
 				name = 'Starboard'
 
 			fig.add_trace(go.Scatter(x=pos_trace_data ['Angles'], y=pos_trace_data ['Force'],
