@@ -304,12 +304,7 @@ else:
 			swivel_pow_crop = swivel_pow.iloc[aperiodic_onset+2:aperiodic_offset,:]
 			avg_pow_crop = avg_pow.iloc[aperiodic_onset+2:aperiodic_offset,:]
 			swivel_pow_avg = avg_pow_crop.iloc[:,1:].astype(float)
-			
 
-
-		
-		
-		
 		
 
 		fig6 = go.Figure()
@@ -318,8 +313,6 @@ else:
 		
 		swivel_pow_plot = pd.DataFrame(lowpass(swivel_pow_plot,10))
 		
-		 
-
 
 		if rig == 'sweep':
 			for col in swivel_pow_plot.columns: 
@@ -704,13 +697,23 @@ else:
 			neg_trace_data['Force'] = lowpass(neg_trace_data['Force'], 3)
 			pos_trace_data['Force'] = lowpass(pos_trace_data['Force'],3)
 			
+			if rig == 'sculling':
+				if gate_count ==1:
+					color = 'red'
+					name = 'Port'
+				else: 
+					color = 'green'
+					name = 'Starboard'
+			else:
+				
+				if sides[athlete_select-1] == 'Port':
+					color = 'red'
+					name = 'Port'
+				else:
+					color = 'green'
+					name = 'Starboard'
 
-			if gate_count ==1:
-				color = 'red'
-				name = 'Port'
-			else: 
-				color = 'green'
-				name = 'Starboard'
+
 
 			fig.add_trace(go.Scatter(x=pos_trace_data ['Angles'], y=pos_trace_data ['Force'],
 		    	fill=None,
