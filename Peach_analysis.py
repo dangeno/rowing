@@ -26,6 +26,9 @@ import matplotlib.cm as cm
 
 import scipy.integrate as integrate
 
+from htmlwebshot import WebShot
+shot = WebShot()
+
 
 st.image('rowing_canada.png', width = 150)
 st.title("Rowing Canada Peach Analysis")
@@ -146,7 +149,7 @@ else:
 
 
 	vel_threshold = boat_speed.max()-2
-	rate_threshold = 30
+	rate_threshold = 20
 
 	peice_criteria = st.selectbox("Split into Pieces Using:", ['Velocity', 'Stroke Rate'])
 
@@ -160,12 +163,14 @@ else:
 	
 	if peice_criteria == 'Stroke Rate':
 		threshold = st.number_input('Detect Rate Above:', value=round(rate_threshold,1))
-		Threshold_rate = np.where(boat_rate >= threshold)[0]
-		Threshold_rate = np.where(boat_rate >= threshold)[0]
+		threshold_max = st.number_input('Detect Rate Below:', value=round(rate_threshold+10,1))
+		#Threshold_rate = np.where(boat_rate >= threshold)[0]
+		#Threshold_rate = np.where(boat_rate <= threshold_max)[0]
+		Threshold_rate = np.where((boat_rate >= threshold) & (boat_rate <= threshold_max))[0]
 		section_indexes = group_data(Threshold_rate, 2)
 
 
-	fig1 = go.Figure()
+	fig1 = make_subplots(specs=[[{"secondary_y": True}]])
 
 	if peice_criteria == 'Velocity':
 		fig1.add_trace(go.Scatter(y=boat_speed,
@@ -173,12 +178,20 @@ else:
 	    	mode='lines',
 	    	line_color = 'blue',
 	    	name = 'boat speed'))
+		fig1.add_trace(go.Scatter(y=boat_rate,
+	    	fill=None,
+	    	mode='lines',
+	    	line_color = 'red',
+	    	name = 'Stoke Rate'), secondary_y=True)
+		height = 7
+
 	if peice_criteria == 'Stroke Rate':
 		fig1.add_trace(go.Scatter(y=boat_rate,
 	    	fill=None,
 	    	mode='lines',
 	    	line_color = 'blue',
 	    	name = 'Stoke Rate'))
+		height = 45
 
 	for section in section_indexes: 
 		if len(section)>2:
@@ -188,13 +201,16 @@ else:
 		        x0=section[0],
 		        x1=section[-1],
 		        y0=0,
-		        y1= 7,
+		        y1 = height, 
 		        fillcolor="grey",
 		        opacity=0.2)
 
-			fig1.add_vline(x=section[0], line_width=3, line_dash="dash", line_color= '#2ca02c' , annotation_text= 'Piece Start', annotation_textangle = 270, annotation_position="top left")
-			fig1.add_vline(x=section[-1], line_width=3, line_dash="dash", line_color= '#d62728' , annotation_text= 'Piece End', annotation_textangle = 270, annotation_position="top left")
+			fig1.add_vline(x=section[0], line_width=3, line_dash="dash", line_color= '#2ca02c' , annotation_text= 'Piece Start', annotation_textangle = 270, annotation_position="top left", opacity=0.5)
+			fig1.add_vline(x=section[-1], line_width=3, line_dash="dash", line_color= '#d62728' , annotation_text= 'Piece End', annotation_textangle = 270, annotation_position="top left", opacity=0.5)
 	
+	fig1.update_layout(xaxis_title = '<b>Number of Strokes</b>')
+	fig1.update_layout(yaxis_title = f'<b>Boat Velocity</b> (m/s)')
+	fig1.update_yaxes(title_text="<b>Strokes Per Minute</b> (SPM)", secondary_y=True, showgrid = False)
 	st.plotly_chart(fig1)
 
 	plot_show = st.checkbox('Show Detailed Plots')
@@ -216,10 +232,12 @@ else:
 		st.write('enter names')
 		st.stop()
 
+
 	if name_list is None: 
 		name_select = st.selectbox('select athlete for analysis', name_list)
 		st.write("detected none")
 	else: 
+		name_list = name_list + ['All']
 		name_select = st.selectbox('select athlete for analysis', name_list)
 
 	if rig == 'sculling': 
@@ -258,7 +276,12 @@ else:
 			index_list.append(peice_arrays[i])
 	
 
-
+	port_eff_length = []
+	star_eff_length = []
+	port_pow = []
+	star_pow = [] 
+	sweep_eff_length = []
+	sweep_pow = []
 	for section in index_list:
 		count += 1
 		
@@ -360,8 +383,10 @@ else:
 		#for export
 		if rig == 'sweep':
 			avg_seat_power.append(swivel_pow_avg.mean(axis = 0))
+			addition = 2
 		elif rig == 'sculling':
 			avg_seat_power.append(swivel_pow_avg.mean(axis = 0))
+			addition = 0
 		
 
 		
@@ -377,8 +402,10 @@ else:
 		catch_slip = aperiodic_data.iloc[:,catch_slip]
 		catch_slip_crop = catch_slip[aperiodic_onset+2:aperiodic_offset].astype(float)
 
+		
 		#for export
-		avg_CS = catch_slip_crop.iloc[:,1:len(name_list)+1]
+		
+		avg_CS = catch_slip_crop.iloc[:,1:len(name_list)+addition]
 		avg_CS = avg_CS.mean(axis = 0)
 		avg_c_slip.append(avg_CS)
 
@@ -387,7 +414,7 @@ else:
 		finish_slip_crop = finish_slip[aperiodic_onset+2:aperiodic_offset].astype(float)
 
 		#for export
-		avg_FS = finish_slip_crop.iloc[:,1:len(name_list)+1]
+		avg_FS = finish_slip_crop.iloc[:,1:len(name_list)+addition]
 		avg_FS = avg_FS.mean(axis = 0)
 		avg_f_slip.append(avg_FS)
 
@@ -399,7 +426,7 @@ else:
 		min_angle = aperiodic_data.iloc[:,min_angle]
 		min_angle_crop = min_angle[aperiodic_onset+2:aperiodic_offset].astype(float)
 
-		avg_min = min_angle_crop.iloc[:,1:len(name_list)+1]
+		avg_min = min_angle_crop.iloc[:,1:len(name_list)+addition]
 		avg_min = avg_min.mean(axis = 0)
 		avg_catch.append(avg_min)
 
@@ -408,7 +435,7 @@ else:
 		max_angle = aperiodic_data.iloc[:,max_angle]
 		max_angle_crop = max_angle[aperiodic_onset+2:aperiodic_offset].astype(float)
 
-		avg_max = max_angle_crop.iloc[:,1:len(name_list)+1]
+		avg_max = max_angle_crop.iloc[:,1:len(name_list)+addition]
 		avg_max = avg_max.mean(axis = 0)
 		avg_fin.append(avg_max)
 		
@@ -538,11 +565,19 @@ else:
 
 				st.plotly_chart(fig3)
 
-	
-
-
+		if name_select == 'All':
+			st.header('Still Building :)')
+			st.stop()
+		else:
+			athlete_select = np.where(pd.Series(name_list).str.contains(name_select))[0][0]+1
+		
+		
 		col4, col5, col6 = st.columns(3)
-			
+
+
+		
+
+
 		with col4:
 			st.metric('Average Boat Power', round(np.mean(power_data_crop),2))
 		with col5: 
@@ -554,9 +589,9 @@ else:
 			final_dist = float(boat_dist.max())
 			st.metric('Piece Distance (m)', round(final_dist))
 
+		
 
-		athlete_select = np.where(pd.Series(name_list).str.contains(name_select))[0][0]+1
-
+		
 		#Angle Data
 		seat_angle = np.where(pd.to_numeric(angle_data.iloc[1], errors='coerce') == athlete_select)[0]
 		seat_angle_data = angle_data_crop.iloc[:,seat_angle].reset_index(drop=True)
@@ -626,16 +661,19 @@ else:
 				
 				if col == 1:
 					with col4:
-						st.metric("P Effective Length (deg)", round(eff_length,1))
+						st.metric("Port Effective Length (deg)", round(eff_length,1))
+						
 				else:
 					with col5: 
-						st.metric("S Effective Length (deg)", round(eff_length,1))
+						st.metric("Star Effective Length (deg)", round(eff_length,1))
+						
 			
 				if col == 1:
 					with col6:
 						
 						st.metric('Average Port Seat Power', round(seat_power_data.iloc[:,0].mean(),2))
-						st.metric('Average Sartboard Seat Power', round(seat_power_data.iloc[:,1].mean(),2))
+						st.metric('Average Star Seat Power', round(seat_power_data.iloc[:,1].mean(),2))
+						
 		
 		else: 
 			with col4: 
@@ -644,14 +682,16 @@ else:
 				
 				eff_length = length - seat_cslip_data.dropna().astype(float).mean()[0] - seat_fslip_data.dropna().astype(float).mean()[0]
 				st.metric("Effective Length (deg)", round(eff_length,1))
+				
 			with col5:
 				st.metric('Average Seat Power', round(seat_power_data.mean(),2), delta= round(float(seat_power_data.mean() - swivel_pow_avg),2))
-
-
+				
+		
 		fig = go.Figure()
 		fig.update_layout(xaxis_range=[-70,70])
 		st.header('Slips')
-		col7, col8 = st.columns(2)
+
+		col7, col8, col9, col10 = st.columns(4)
 
 		gate_count = 0
 
@@ -683,6 +723,8 @@ else:
 						negative_pairs.append((x, y))
 
 				previous_x = x
+
+			
 
 			pos_trace_data = pd.DataFrame(postive_pairs).astype(float)
 			pos_trace_data.columns = ['Angles', 'Force']
@@ -728,17 +770,41 @@ else:
 		    	name = 'Angle Vs. Force', 
 		    	showlegend=False ))
 			
-			fig.add_vline(x=np.mean(front_slip), line_width=3, line_dash="dash", line_color=  color, annotation_text= f'Catch Slip {gate_count}:  <b>{round(front_res)}<b>', annotation_textangle = 270, annotation_position="top left")
-			fig.add_vline(x=np.mean(end_slip), line_width=3, line_dash="dash", line_color=  color , annotation_text= f'Finish Slip {gate_count}:  <b>{round(end_res)}<b>', annotation_textangle = 270, annotation_position="top left")
+			fig.add_vline(x=np.mean(front_slip), line_width=3, line_dash="dash", line_color=  color, annotation_text= f'Catch Slip {gate_count}:  <b>{round(front_res, 2)}<b>', annotation_textangle = 270, annotation_position="top left")
+			fig.add_vline(x=np.mean(end_slip), line_width=3, line_dash="dash", line_color=  color , annotation_text= f'Finish Slip {gate_count}:  <b>{round(end_res, 2)}<b>', annotation_textangle = 270, annotation_position="top left")
 			fig.update_layout(title = f"<b>Force Vs. Gate Angle:<b> {name_select} Seat {athlete_select} Piece {count}", 
 								xaxis_title = '<b>Gate Angle<b> (Degrees)', 
 								yaxis_title = '<b>Gate Force<b> (N)')
-			with col7: 
-				st.metric('Catch Slip', round(np.mean(front_res),2))
-				st.metric('Catch Length', round(np.mean(seat_min_data.iloc[:,gate].astype(float)),2))
-			with col8: 
-				st.metric('Finish Slip', round(np.mean(end_res),2))
-				st.metric('Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2))
+
+			
+			if rig == 'sculling':
+				if gate_count == 1:
+				
+					with col7: 
+						st.metric('Port Catch Slip', round(np.mean(front_res),2))
+						st.metric('Port Finish Slip', round(np.mean(end_res),2))
+					with col8:
+						st.metric('Port Catch Length', round(np.mean(seat_min_data.iloc[:,gate].astype(float)),2))
+						st.metric('Port Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2))
+				else:
+					
+					with col9:
+						st.metric('Star Catch Slip', round(np.mean(front_res),2))
+						st.metric('Star Finish Slip', round(np.mean(end_res),2))
+					with col10:
+						st.metric('Star Catch Length', round(np.mean(seat_min_data.iloc[:,gate].astype(float)),2))
+						st.metric('Star Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2))
+					
+					
+			else:
+					with col7:
+						st.metric('Catch Slip', round(np.mean(front_res),2))
+						st.metric('Catch Length', round(np.mean(seat_min_data.iloc[:,gate].astype(float)),2))
+					with col9:
+						st.metric('Finish Slip', round(np.mean(end_res),2))
+						st.metric('Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2))
+
+			
 		st.plotly_chart(fig)
 
 		
@@ -750,6 +816,7 @@ else:
 	exp_seat_pow = list(exp_seat_pow.mean(axis=0))
 
 	exp_CS = pd.DataFrame(avg_c_slip)
+	
 	exp_CS = list(exp_CS.mean(axis=0))
 
 	exp_FS = pd.DataFrame(avg_f_slip)
@@ -762,10 +829,12 @@ else:
 	exp_fin = list(exp_fin.mean(axis=0))
 
 	b_class = uploaded_data.name.split(' ')[-1].split('.')[0]
-	
+
+
 	
 	export_data = pd.DataFrame()
-	export_data['athletes'] = name_list
+	#if rig == 'sweep': 
+	export_data['athletes'] = name_list[:-1]
 	export_data['boat class'] = b_class
 	export_data['Date'] = date
 	export_data['sides'] = sides
@@ -777,16 +846,34 @@ else:
 	export_data['average_finish'] = exp_fin
 	export_data['average_length'] = np.array(exp_fin) - np.array(exp_catch)
 	export_data['average_eff_len'] = np.array(exp_fin) - np.array(exp_catch) - np.array(exp_CS) - np.array(exp_FS)
+	
+	#elif rig == 'sculling':
+		#export_data['athletes'] = name_list[:-1]
+		#export_data['boat class'] = b_class
+		#export_data['Date'] = date
+		#export_data['seat'] = seat_list
+		
+		#for gate in range(len(seat_forceX)):
+			#export_data[f'average_seat_{gate}'] = avg_seat_power[gate]
+			#export_data[f'average_catch_slip_{gate}'] = round(np.mean(front_res),2)
+			#export_data[f'average_finish_slip_{gate}'] = round(np.mean(end_res),2)
+			#export_data[f'average_catch_{gate}'] = np.mean(seat_min_data.iloc[:,gate].astype(float))
+			#export_data[f'average_finish_{gate}'] = round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2)
+			#export_data[f'average_length_{gate}'] = np.array(round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2)) - np.array(np.mean(seat_min_data.iloc[:,gate].astype(float)))
+			#export_data[f'average_eff_len_{gate}'] = np.array(round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2)) - np.array(np.mean(seat_min_data.iloc[:,gate].astype(float))) - np.array(round(np.mean(front_res),2)) - np.array(round(np.mean(end_res),2))
+		
+	
 	st.write(export_data)
 
 	#push = st.button('Push to log?')
 	push = False
 	existing = '/Users/danielgeneau/Library/CloudStorage/OneDrive-SharedLibraries-RowingCanadaAviron/HP - Staff - SSSM/General/Biomechanics/Peach data/peach_log.csv'
 	if push: 
-		export_data.to_csv(existing, mode='a', index=False, header=True)
+		export_data.to_csv(existing, mode='a', index=True, header=False)
 	
-	#excel_transfer = pd.read_csv(existing, names=export_data.columns)
-	#excel_transfer.to_excel ('/Users/danielgeneau/Library/CloudStorage/OneDrive-SharedLibraries-RowingCanadaAviron/HP - Staff - SSSM/General/Biomechanics/Peach data/peach_log.xlsx', index = None)
+		
+		excel_transfer = pd.read_csv(existing, names=export_data.columns)
+		excel_transfer.to_excel ('/Users/danielgeneau/Library/CloudStorage/OneDrive-SharedLibraries-RowingCanadaAviron/HP - Staff - SSSM/General/Biomechanics/Peach data/peach_log.xlsx', index = None)
 
 
 
