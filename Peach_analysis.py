@@ -26,8 +26,8 @@ import matplotlib.cm as cm
 
 import scipy.integrate as integrate
 
-from htmlwebshot import WebShot
-shot = WebShot()
+#from htmlwebshot import WebShot
+#shot = WebShot()
 
 
 st.image('rowing_canada.png', width = 150)
