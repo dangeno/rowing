@@ -6,6 +6,12 @@ Peach Analysis streamlit app
 Effective work per stroke
 
 
+Wishlist: 
+- force and time, rate of force development
+- acceleration plot to individual gate angle
+
+
+
 '''
 import os
 import fnmatch
@@ -67,6 +73,28 @@ def group_data(array, threshold):
 
 	    return groups
 
+def zero_crossings(arr):
+    """
+    Detects zero crossings in an array.
+
+    Parameters:
+    arr (list): A list of numbers.
+
+    Returns:
+    list: Indices where zero crossings occur.
+    """
+    crossings = []
+    for i in range(1, len(arr)):
+        if arr[i-1] * arr[i] < 0:
+            crossings.append(i)
+    return crossings
+
+
+
+
+
+
+
 
 os_name = platform.system()
 
@@ -86,6 +114,28 @@ if uploaded_data is None:
 else:
 	#data = pd.read_csv(f'{og_path}{delimiter}{session}{delimiter}{boat_select}.csv')
 	file_type = uploaded_data.name.split('.')[-1]
+	b_class = uploaded_data.name.split(' ')[-1].split('.')[0]
+
+	if b_class == 'W8+' or 'W4-' or 'W2-': 
+		cslip_standard = 4
+		fin_standard = 43
+		catch_standard = -67
+		fslip_standard = 6
+	elif b_class == 'M8+' or 'M4-' or 'M2-': 
+		cslip_standard = 4
+		fin_standard = 43
+		catch_standard = -69
+		fslip_standard = 6
+	elif b_class == 'W4x' or 'W2x' or 'W1x': 
+		cslip_standard = 4
+		fin_standard = 33
+		catch_standard = -57
+		fslip_standard = 6
+	elif b_class == 'M4x' or 'M2x' or 'M1x': 
+		cslip_standard = 4
+		fin_standard = 33
+		catch_standard = -59
+		fslip_standard = 6
 	
 	data = pd.read_csv(uploaded_data, dtype=object)
 	
@@ -172,26 +222,20 @@ else:
 
 	fig1 = make_subplots(specs=[[{"secondary_y": True}]])
 
-	if peice_criteria == 'Velocity':
-		fig1.add_trace(go.Scatter(y=boat_speed,
-	    	fill=None,
-	    	mode='lines',
-	    	line_color = 'blue',
-	    	name = 'boat speed'))
-		fig1.add_trace(go.Scatter(y=boat_rate,
-	    	fill=None,
-	    	mode='lines',
-	    	line_color = 'red',
-	    	name = 'Stoke Rate'), secondary_y=True)
-		height = 7
 
-	if peice_criteria == 'Stroke Rate':
-		fig1.add_trace(go.Scatter(y=boat_rate,
-	    	fill=None,
-	    	mode='lines',
-	    	line_color = 'blue',
-	    	name = 'Stoke Rate'))
-		height = 45
+	fig1.add_trace(go.Scatter(y=boat_speed,
+    	fill=None,
+    	mode='lines',
+    	line_color = 'blue',
+    	name = 'boat speed'))
+	fig1.add_trace(go.Scatter(y=boat_rate,
+    	fill=None,
+    	mode='lines',
+    	line_color = 'red',
+    	name = 'Stoke Rate'), secondary_y=True)
+	height = 7
+
+
 
 	for section in section_indexes: 
 		if len(section)>2:
@@ -282,6 +326,9 @@ else:
 	star_pow = [] 
 	sweep_eff_length = []
 	sweep_pow = []
+
+
+
 	for section in index_list:
 		count += 1
 		
@@ -463,8 +510,10 @@ else:
 		plot_accel = lowpass(accel_data_crop,5)
 		
 		fig2 = go.Figure()
+		#avg_angle
 
-		fig2.add_trace(go.Scatter(x=avg_angle, y=plot_accel,
+		angle_col = next((i for i, item in enumerate(name_list) if str(name_select) in item), None)
+		fig2.add_trace(go.Scatter(x=angle_data_crop.iloc[:,angle_col], y=plot_accel,
 	    	fill=None,
 	    	mode='lines',
 	    	line_color = 'blue',
@@ -472,7 +521,8 @@ else:
 	    	name = 'Acceleration'))
 		
 
-		round_angle = avg_angle.round()
+		#round_angle = avg_angle.round()
+		round_angle = angle_data_crop.iloc[:,angle_col].round()
 		postive_pairs = []
 		negative_pairs = []
 		positive_y_values = []
@@ -508,7 +558,11 @@ else:
 	    	mode='markers',
 	    	line_color = 'red',
 	    	name = 'Average Acceleration'))
+		find_cross = np.array(neg_trace_data.iloc[:,1])
+		crossings = zero_crossings(find_cross)
 
+		
+		fig2.add_vline(x = min(neg_trace_data.iloc[crossings,0]), line_dash="dash", line_color= '#d62728' , annotation_text = f'{min(neg_trace_data.iloc[crossings,0])} degrees')
 		fig2.add_hline(y=0)
 		
 		fig2.update_layout(title = f"<b>Boat Acceleration Vs. Gate Average Angle", 
@@ -781,16 +835,16 @@ else:
 				if gate_count == 1:
 				
 					with col7: 
-						st.metric('Port Catch Slip', round(np.mean(front_res),2))
-						st.metric('Port Finish Slip', round(np.mean(end_res),2))
+						st.metric('Port Catch Slip', round(np.mean(front_res),2), delta = (round(np.mean(front_res))- cslip_standard, 2)*-1)
+						st.metric('Port Finish Slip', round(np.mean(end_res),2), delta = (round(np.mean(end_res)) - fslip_standard, 2)*-1)
 					with col8:
 						st.metric('Port Catch Length', round(np.mean(seat_min_data.iloc[:,gate].astype(float)),2))
 						st.metric('Port Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2))
 				else:
 					
 					with col9:
-						st.metric('Star Catch Slip', round(np.mean(front_res),2))
-						st.metric('Star Finish Slip', round(np.mean(end_res),2))
+						st.metric('Star Catch Slip', round(np.mean(front_res),2), delta = round(np.mean(front_res) - cslip_standard, 2)*-1)
+						st.metric('Star Finish Slip', round(np.mean(end_res),2), delta = round(np.mean(end_res) - fslip_standard, 2)*-1)
 					with col10:
 						st.metric('Star Catch Length', round(np.mean(seat_min_data.iloc[:,gate].astype(float)),2))
 						st.metric('Star Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2))
@@ -798,10 +852,10 @@ else:
 					
 			else:
 					with col7:
-						st.metric('Catch Slip', round(np.mean(front_res),2))
+						st.metric('Catch Slip', round(np.mean(front_res),2), delta = round(np.mean(front_res)- cslip_standard, 2)*-1)
 						st.metric('Catch Length', round(np.mean(seat_min_data.iloc[:,gate].astype(float)),2))
 					with col9:
-						st.metric('Finish Slip', round(np.mean(end_res),2))
+						st.metric('Finish Slip', round(np.mean(end_res),2), delta = round(np.mean(end_res)- fslip_standard, 2)*-1)
 						st.metric('Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2))
 
 			
@@ -828,9 +882,7 @@ else:
 	exp_fin = pd.DataFrame(avg_fin)
 	exp_fin = list(exp_fin.mean(axis=0))
 
-	b_class = uploaded_data.name.split(' ')[-1].split('.')[0]
-
-
+	
 	
 	export_data = pd.DataFrame()
 	#if rig == 'sweep': 
@@ -862,8 +914,9 @@ else:
 			#export_data[f'average_length_{gate}'] = np.array(round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2)) - np.array(np.mean(seat_min_data.iloc[:,gate].astype(float)))
 			#export_data[f'average_eff_len_{gate}'] = np.array(round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2)) - np.array(np.mean(seat_min_data.iloc[:,gate].astype(float))) - np.array(round(np.mean(front_res),2)) - np.array(round(np.mean(end_res),2))
 		
-	
-	st.write(export_data)
+	show_averages = st.checkbox('Show Average Values')
+	if show_averages == True:
+		st.write(export_data)
 
 	#push = st.button('Push to log?')
 	push = False
