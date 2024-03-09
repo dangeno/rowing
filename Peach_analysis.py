@@ -326,11 +326,16 @@ else:
 	star_pow = [] 
 	sweep_eff_length = []
 	sweep_pow = []
+	dist_list = []
 
 
 
 	for section in index_list:
 		count += 1
+
+		avg_rate = np.mean(boat_rate[section])
+		avg_vel = np.mean(boat_speed[section])
+
 		
 
 
@@ -347,6 +352,7 @@ else:
 
 		boat_dist = np.where(periodic_data.iloc[0,:]=='Distance')[0]
 		boat_dist = periodic_data.iloc[2:,boat_dist]
+		dist_list.append(boat_dist)
 
 
 		boat_dist = (boat_dist.iloc[periodic_onset:periodic_offset,:].astype(float) - boat_dist.iloc[periodic_onset,:].astype(float))
@@ -378,7 +384,7 @@ else:
 		
 
 		fig6 = go.Figure()
-		count_pow =0
+		count_pow = 0
 		swivel_pow_plot = swivel_pow_crop.iloc[:,1:].reset_index(drop=True).dropna().astype(float)
 		
 		swivel_pow_plot = pd.DataFrame(lowpass(swivel_pow_plot,10))
@@ -448,6 +454,19 @@ else:
 		catch_slip = np.where(aperiodic_data.iloc[0].str.endswith('CatchSlip'))[0]
 		catch_slip = aperiodic_data.iloc[:,catch_slip]
 		catch_slip_crop = catch_slip[aperiodic_onset+2:aperiodic_offset].astype(float)
+
+
+		#Drive Time
+		drive_time = np.where(aperiodic_data.iloc[0].str.endswith('Drive Time'))[0]
+		drive_time = aperiodic_data.iloc[:,drive_time]
+		drive_time_crop = drive_time[aperiodic_onset+2:aperiodic_offset].astype(float)
+
+
+		max_force = np.where(aperiodic_data.iloc[0].str.endswith('Rower Swivel Power'))[0]
+		max_force = aperiodic_data.iloc[:,max_force]
+		max_force_crop = max_force[aperiodic_onset+2:aperiodic_offset].astype(float)
+		
+
 
 		
 		#for export
@@ -643,7 +662,7 @@ else:
 			final_dist = float(boat_dist.max())
 			st.metric('Piece Distance (m)', round(final_dist))
 
-		
+
 
 		
 		#Angle Data
@@ -657,8 +676,19 @@ else:
 		seat_forceX_data = forceX_data_crop.iloc[:,seat_forceX].reset_index(drop=True)
 		seat_forceX_data = seat_forceX_data[2:]
 
+		seat_max_force = np.where(pd.to_numeric(max_force.iloc[1], errors='coerce')== athlete_select)[0]
+		seat_max_force_data = max_force_crop.iloc[:,seat_max_force].reset_index(drop=True)
+		seat_max_force_data = seat_max_force_data[2:]
+
 		extremes = list(np.where(abs(seat_angle_data.astype(float))>100)[0])
 		force_extremes = list(np.where(abs(seat_forceX_data.astype(float))>200)[0])
+
+		#Drive Time
+		seat_drive_time = np.where(pd.to_numeric(drive_time.iloc[1], errors='coerce')== athlete_select)[0]
+		seat_drive_time_data = drive_time_crop.iloc[:,seat_drive_time].reset_index(drop=True)
+		seat_drive_time_data = seat_drive_time_data[2:]
+
+
 
 		
 		
@@ -701,8 +731,57 @@ else:
 		
 		average_seat_pow = seat_power_data.mean()
 
+		#Force Velocity Profiling
+		if rig == 'sweep':
+			FV_info = pd.DataFrame()
+			FV_info['Stroke Rate'] = boat_rate[section[0]:section[-1]]
+			FV_info['Boat Speed'] = boat_speed[section[0]:section[-1]]
+			
+			
+			FV_info['Power'] = seat_max_force_data
+			FV_info['Force'] = FV_info['Power']/FV_info['Stroke Rate']
+			FV_info['Drive Time'] = seat_drive_time_data
+			FV_info = FV_info[FV_info['Force'] >= 2]
+			FV_info = FV_info[FV_info['Stroke Rate'] >= 10]
+			FV_info = FV_info[FV_info['Drive Time'] >= .1]
+			FV_info['Work'] = FV_info['Force']/ FV_info['Drive Time']
+			FV_line = sp.stats.linregress(FV_info['Stroke Rate'], FV_info['Force'])
+			IV_line = sp.stats.linregress(FV_info['Stroke Rate'], FV_info['Work'])
+			I_SR= np.polyfit(FV_info['Stroke Rate'], FV_info['Work']*FV_info['Stroke Rate'], 2)
 
-		
+
+			FV_fig = make_subplots(specs=[[{"secondary_y": True}]])
+			FV_fig.update_layout(title = f"<b>Force Stroke Rate Regression<b> Piece {count}", 
+									xaxis_title = '<b>Stroke Rate<b> (SPM)', 
+									yaxis_title = '<b>Force<b> (N)')
+			fig1.update_yaxes(title_text="<b>Impulse</b> (Nm)", secondary_y=True, showgrid = False)
+
+			FV_fig.add_trace(go.Scatter(x=FV_info['Stroke Rate'], y=FV_info['Work'],
+			    	fill=None,
+			    	mode='markers',
+			    	line_color = 'green',
+			    	name = f'{athlete_select} Impuse' , 
+			    	showlegend=True ))
+			FV_fig.add_trace(go.Scatter(x=FV_info['Stroke Rate'], y=I_SR[0]*FV_info['Stroke Rate']**2 + I_SR[1]*FV_info['Stroke Rate'] +I_SR[2],
+			    	fill=None,
+			    	mode='lines',
+			    	line_color = 'blue',
+			    	name = f'{athlete_select} Rated Impulse Fit' , 
+			    	showlegend=True ), secondary_y = True)
+			FV_fig.add_trace(go.Scatter(x=FV_info['Stroke Rate'], y=FV_info['Work']*FV_info['Stroke Rate'],
+			    	fill=None,
+			    	mode='markers',
+			    	line_color = 'blue',
+			    	name = f'{athlete_select} Rated Work' , 
+			    	showlegend=True ),secondary_y=True)
+			FV_fig.add_trace(go.Scatter(x=FV_info['Stroke Rate'], y= IV_line.slope* FV_info['Stroke Rate']+IV_line.intercept,
+			    	fill=None,
+			    	mode='lines',
+			    	line_color = 'green',
+			    	name = f'{athlete_select} Impulse SR slope' , 
+			    	showlegend=True ))
+			#st.plotly_chart(FV_fig)
+
 		
 		if len(seat_max_data.columns)>1:
 			
@@ -739,10 +818,12 @@ else:
 				
 			with col5:
 				st.metric('Average Seat Power', round(seat_power_data.mean(),2), delta= round(float(seat_power_data.mean() - swivel_pow_avg),2))
-				
 		
+			
+
+
 		fig = go.Figure()
-		fig.update_layout(xaxis_range=[-70,70])
+		fig.update_layout(xaxis_range=[-65,70])
 		st.header('Slips')
 
 		col7, col8, col9, col10 = st.columns(4)
@@ -835,28 +916,28 @@ else:
 				if gate_count == 1:
 				
 					with col7: 
-						st.metric('Port Catch Slip', round(np.mean(front_res),2), delta = (round(np.mean(front_res))- cslip_standard, 2)*-1)
-						st.metric('Port Finish Slip', round(np.mean(end_res),2), delta = (round(np.mean(end_res)) - fslip_standard, 2)*-1)
+						st.metric('Port Catch Slip', round(np.mean(front_res),2), delta = round((np.mean(front_res)) - cslip_standard, 2)*-1)
+						st.metric('Port Finish Slip', round(np.mean(end_res),2), delta = round((np.mean(end_res)) - fslip_standard, 2)*-1)
 					with col8:
-						st.metric('Port Catch Length', round(np.mean(seat_min_data.iloc[:,gate].astype(float)),2))
-						st.metric('Port Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2))
+						st.metric('Port Catch Length', round(np.mean(seat_min_data.iloc[:,gate].astype(float)),2), delta = round(np.mean(seat_min_data.iloc[:,gate].astype(float)) - catch_standard, 2)*-1)
+						st.metric('Port Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2), delta = round(np.mean(seat_max_data.iloc[:,gate].astype(float)) - fin_standard, 2))
 				else:
 					
 					with col9:
 						st.metric('Star Catch Slip', round(np.mean(front_res),2), delta = round(np.mean(front_res) - cslip_standard, 2)*-1)
 						st.metric('Star Finish Slip', round(np.mean(end_res),2), delta = round(np.mean(end_res) - fslip_standard, 2)*-1)
 					with col10:
-						st.metric('Star Catch Length', round(np.mean(seat_min_data.iloc[:,gate].astype(float)),2))
-						st.metric('Star Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2))
+						st.metric('Star Catch Length', round(np.mean(seat_min_data.iloc[:,gate].astype(float)),2), delta = round(np.mean(seat_min_data.iloc[:,gate].astype(float)) - catch_standard, 2)*-1)
+						st.metric('Star Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2), delta = round(np.mean(seat_max_data.iloc[:,gate].astype(float)) - fin_standard, 2))
 					
 					
 			else:
 					with col7:
 						st.metric('Catch Slip', round(np.mean(front_res),2), delta = round(np.mean(front_res)- cslip_standard, 2)*-1)
-						st.metric('Catch Length', round(np.mean(seat_min_data.iloc[:,gate].astype(float)),2))
+						st.metric('Catch Length', round(np.mean(seat_min_data.iloc[:,gate].astype(float)),2), delta = round(np.mean(seat_min_data.iloc[:,gate].astype(float)) - catch_standard, 2)*-1)
 					with col9:
 						st.metric('Finish Slip', round(np.mean(end_res),2), delta = round(np.mean(end_res)- fslip_standard, 2)*-1)
-						st.metric('Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2))
+						st.metric('Finish Length', round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2), delta = round( np.mean(seat_max_data.iloc[:,gate].astype(float))- fin_standard    ,2))
 
 			
 		st.plotly_chart(fig)
@@ -898,6 +979,7 @@ else:
 	export_data['average_finish'] = exp_fin
 	export_data['average_length'] = np.array(exp_fin) - np.array(exp_catch)
 	export_data['average_eff_len'] = np.array(exp_fin) - np.array(exp_catch) - np.array(exp_CS) - np.array(exp_FS)
+	#export_data['total distance'] = np.sum(dist_list)
 	
 	#elif rig == 'sculling':
 		#export_data['athletes'] = name_list[:-1]
@@ -914,7 +996,8 @@ else:
 			#export_data[f'average_length_{gate}'] = np.array(round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2)) - np.array(np.mean(seat_min_data.iloc[:,gate].astype(float)))
 			#export_data[f'average_eff_len_{gate}'] = np.array(round(np.mean(seat_max_data.iloc[:,gate].astype(float)),2)) - np.array(np.mean(seat_min_data.iloc[:,gate].astype(float))) - np.array(round(np.mean(front_res),2)) - np.array(round(np.mean(end_res),2))
 		
-	show_averages = st.checkbox('Show Average Values')
+	#show_averages = st.checkbox('Show Average Values')
+	show_averages = True
 	if show_averages == True:
 		st.write(export_data)
 
